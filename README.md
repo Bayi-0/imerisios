@@ -432,6 +432,10 @@ The schema for notes includes:
 
 This feature integrates seamlessly with the rest of the application, offering a comprehensive tool for recording and reflecting on personal thoughts and experiences.
 
+## License
+
+This project is licensed under the BSD-3-Clause License - see the [LICENSE](LICENSE) file for details.
+
 ## Acknowlegments:
 
 - [**Toga**](https://toga.readthedocs.io/)
