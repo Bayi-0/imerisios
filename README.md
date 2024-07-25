@@ -2,7 +2,7 @@
 
 #### Video Demo: https://youtu.be/lBq1BzejSqM
 
-## Overview
+## Description
 
 The app provides a versatile set of functionalities including a coin flip, to-do list management, habit tracking, and journaling. It features a user-friendly interface with dynamic navigation, allowing users to easily switch between different features and access settings. The app also includes backup and restore capabilities for its databases, ensuring user data is safely managed. 
 
