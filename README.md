@@ -43,7 +43,8 @@ The app provides a versatile set of functionalities including a coin flip, to-do
 ## Usage
 
 Can be installed and used on Android devices. 
-Warning: the app's UI is not flexible and looks bad on most of the screens.
+
+Warning: the app's UI is not flexible and looks bad on most of the screens. Works properly on this screen: 6.67 inches, 1080 x 2400 pixels, 20:9 ratio (~395 ppi density).
 
 ## Functionalities
 
