@@ -1,0 +1,29 @@
+# Imerisios Release Notes
+
+## [1.0.0] - 2024-07-25
+
+### Added
+- **Initial release of the `Imerisios` app.**
+- **Coin flip functionality.**
+- **To-do list functionality**:
+  - Ability to create, delete, edit, and mark tasks as done.
+  - Task categorization by tier, type, and urgency.
+  - History of completed tasks.
+- **Habit tracking functionality**:
+  - Ability to create, delete, rename, and change the tracking state of habits.
+  - Ability to record successes, failures, and skips.
+  - View analyzed data of created habits.
+- **Journal functionality** for recording entries and notes.
+- **Settings functionality**:
+  - Reset database.
+  - Reset today's data.
+  - Backup and restore feature (alpha).
+
+### Changed
+- *N/A*
+
+### Fixed
+- *N/A*
+
+### Removed
+- *N/A*
