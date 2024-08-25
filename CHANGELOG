@@ -1,0 +1,57 @@
+# Imerisios Release Notes
+
+## [v1.0.0] - 2024-07-25
+
+### Added
+- Initial release of the `Imerisios` app.
+- Coin flip functionality.
+- To-do list functionality:
+  - Ability to create, delete, edit, and mark tasks as done.
+  - Task categorization by tier, type, and urgency.
+  - History of completed tasks.
+- Habit tracking functionality:
+  - Ability to create, delete, rename, and change the tracking state of habits.
+  - Ability to record successes, failures, and skips.
+  - View analyzed data of created habits.
+- Journal functionality for recording entries and notes.
+- Settings functionality:
+  - Reset database.
+  - Reset today's data.
+  - Backup and restore feature (alpha).
+
+### Changed
+- N/A
+
+### Fixed
+- N/A
+
+### Removed
+- N/A
+
+## [v1.1.0] - 2024-08-25
+
+### Added
+- Create habit tab;
+- Manage section to habit more;
+- Day change info dialog;
+- Deletion of habit records with none state in 7 days after creating.
+
+### Changed
+- Changes logo;
+- Improved loading: on launch only menu and coin flip are loaded, other tabs are loaded on their opening;
+- Updated schedule interval for day_change check to every minute;
+- Changed to-do list tab that opens after deleting a task to the tab where the task was;
+- Updated verage success numbers of habits computations; 
+- Replaced some quotes.
+
+### Fixed
+- Fixed creating some of the same objects multiple times for habit more - optimized repeated opening of habit more;
+- Fixed backup_databases output files name;
+- Solved the problem with habit records not being created immediately after a habit's tracking was resumed;
+- Fixed current streak update for following days when habit's state is changed on a past day.
+
+
+### Removed
+- Manage habits tab;
+- Task types update info dialog.
+
