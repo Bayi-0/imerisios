@@ -473,7 +473,7 @@ class Journal:
                 
 
     def create_note(self, widget):
-        title = self.journal_notes_create_title_input.value 
+        title = self.journal_notes_create_title_input.value.strip()
         content = self.journal_notes_create_content_input.value 
         
         if title and content:
@@ -493,7 +493,7 @@ class Journal:
 
     
     async def save_note_dialog(self, widget):
-        title = self.journal_notes_edit_title_input.value
+        title = self.journal_notes_edit_title_input.value.strip()
         content = self.journal_notes_edit_content_input.value
 
         if content and title:

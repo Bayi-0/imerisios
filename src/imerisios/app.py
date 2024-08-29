@@ -180,7 +180,7 @@ class Imerisios(toga.App):
             self.habits.update_habit(details=False, tracking=False)
             self.journal.update_journal()
 
-            self.app.main_window.info_dialog("Day change", "Everything related to day change has been updated successfully. You may need to relaunch the app.")
+            self.app.main_window.info_dialog("Day Change", "Everything related to day change has been updated successfully. You may need to relaunch the app.")
             
 
     def run_scheduler(self):

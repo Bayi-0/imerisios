@@ -28,6 +28,7 @@
 ### Removed
 - N/A
 
+
 ## [v1.1.0] - 2024-08-25
 
 ### Added
@@ -50,8 +51,22 @@
 - Solved the problem with habit records not being created immediately after a habit's tracking was resumed;
 - Fixed current streak update for following days when habit's state is changed on a past day.
 
-
 ### Removed
 - Manage habits tab;
 - Task types update info dialog.
 
+
+## [v1.1.1] - 2024-08-29
+
+### Added
+- .strip() for user inputs where needed.
+
+### Changed
+- Capitalized all words in the day change dialog.
+
+### Fixed
+- Fixed create habit function;
+- Made it impossible to create new/old habit with a name that already exists.
+
+### Removed
+- N\A

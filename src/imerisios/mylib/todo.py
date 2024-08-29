@@ -440,7 +440,7 @@ class ToDo:
 
     def create_task(self, widget):
         if self.create_input.value:
-            task = self.create_input.value
+            task = self.create_input.value.strip()
             tier = self.create_tier.value.lower()
             urgency = self.create_urgency.value.lower()
             task_type = self.create_type.value.lower()
@@ -511,7 +511,7 @@ class ToDo:
                 UPDATE tasks
                 SET task_type = ?, tier = ?, task = ?, urgency = ?, due_date = ?
                 WHERE id = ?;
-            """, (self.edit_type.value.lower(), self.edit_tier.value.lower(), self.edit_input.value, self.edit_urgency.value.lower(), self.edit_duedate.value, self.temp_task_id,))
+            """, (self.edit_type.value.lower(), self.edit_tier.value.lower(), self.edit_input.value.strip(), self.edit_urgency.value.lower(), self.edit_duedate.value, self.temp_task_id,))
             con.commit()
             temp = [self.edit_type.value.lower()]
             task_types = temp if self.temp_task_type in temp else temp+[self.temp_task_type]

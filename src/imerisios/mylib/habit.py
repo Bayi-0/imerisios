@@ -715,25 +715,31 @@ class Habits:
 
 
     def create_habit(self, widget):
-        habit_name = self.habit_manage_create_input.value
-        if habit_name:
+        if habit_name := self.habit_create_input.value.strip():
             con, cur = get_connection(self.db_path)
             
             cur.execute("""
-                INSERT INTO habits (name)
-                VALUES (?);
+                SELECT id FROM habits
+                WHERE name = ?;
                 """, (habit_name,))
+            if result := cur.fetchone():
+                self.app.main_window.info_dialog("Habit Already Exists", f"Habit [{result[0]:04d}] already uses this name.")
+                self.habit_create_input.value = ""
+            else:
+                cur.execute("""
+                    INSERT INTO habits (name)
+                    VALUES (?);
+                    """, (habit_name,))
+                con.commit()
 
-            con.commit()
+                self.create_habit_records(load=False, con_cur=(con, cur))
+                self.habit_get_data(dates=[date.today()], details=True, tracking=True, con_cur=(con, cur))
 
-            self.create_habit_records(load=False, con_cur=(con, cur))
-            self.habit_get_data(dates=[date.today()], details=True, tracking=True, con_cur=(con, cur))
+                self.habit_tracker_date.value = date.today()
+                self.load_habits(widget, tracker=False, details=True)
+                self.app.open_habit_tracker(widget)
 
             con.close()
-
-            self.habit_tracker_date.value = date.today()
-            self.load_habits(widget, tracker=False, details=True)
-            self.app.open_habit_tracker(widget)
     
 
     def create_habit_records(self, load=True, con_cur=None):
@@ -867,35 +873,44 @@ class Habits:
 
 
     async def rename_habit(self):
-        new_name = self.habit_more_rename_input.value
+        new_name = self.habit_more_rename_input.value.strip()
         self.habit_more_rename_input.value = ""
         id = self.temp_habit_id
 
         con, cur = get_connection(self.db_path)
 
         cur.execute("""
-            SELECT record_date FROM habit_records
-            WHERE habit_id = ?
-            AND record_date >= ?;
-        """, (id, date.today()-timedelta(days=6)))         
-        dates = cur.fetchall()
+                SELECT id FROM habits
+                WHERE name = ?;
+                """, (new_name,))
+        if result := cur.fetchone():
+            self.app.main_window.info_dialog("Habit Already Exists", f"Habit [{result[0]:04d}] already uses this name.")
+            self.habit_more_rename_input.value = ""
+        else:
+            cur.execute("""
+                SELECT record_date FROM habit_records
+                WHERE habit_id = ?
+                AND record_date >= ?;
+            """, (id, date.today()-timedelta(days=6)))         
+            dates = cur.fetchall()
 
-        cur.execute("""
-            UPDATE habits
-            SET name = ?
-            WHERE id = ?;
-        """, (new_name, id,))
-        con.commit()
+            cur.execute("""
+                UPDATE habits
+                SET name = ?
+                WHERE id = ?;
+            """, (new_name, id,))
+            con.commit()
 
-        self.habit_get_data(dates=[date.fromisoformat(d[0]) for d in dates], details=True, tracking=True, con_cur=(con, cur))
+            self.habit_get_data(dates=[date.fromisoformat(d[0]) for d in dates], details=True, tracking=True, con_cur=(con, cur))
+
+            self.load_habits(None, details=True)
+            habit_more_label = toga.Label(
+                f"Habit [{id:04d}]\n{new_name}", 
+                style=Pack(padding=14, text_align="center", font_weight="bold", font_size=15, color="#EBF6F7"))
+            self.habit_more_label_box.clear()
+            self.habit_more_label_box.add(habit_more_label)
+            
         con.close()
-
-        self.load_habits(None, details=True)
-        habit_more_label = toga.Label(
-            f"Habit [{id:04d}]\n{new_name}", 
-            style=Pack(padding=14, text_align="center", font_weight="bold", font_size=15, color="#EBF6F7"))
-        self.habit_more_label_box.clear()
-        self.habit_more_label_box.add(habit_more_label)
 
 
     def calculate_streak(self, states: list) -> int:
