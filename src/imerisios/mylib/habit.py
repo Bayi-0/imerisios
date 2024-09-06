@@ -845,7 +845,7 @@ class Habits:
             
         con.commit()
 
-        self.habit_get_data(dates=[], tracking=True, con_cur=(con, cur))
+        self.habit_get_data(dates=[], details=True, tracking=True, con_cur=(con, cur))
         con.close()     
 
         completed_date = self.data["tracking"][id]
@@ -863,6 +863,8 @@ class Habits:
         completed = self.data["tracking"][id]
         button = self.habit_more_resume_button if completed else self.habit_more_complete_button
         box.add(self.habit_more_delete_button, button)
+
+        self.load_habits(None, tracker=False, details=True)
 
     
     async def rename_habit_dialog(self, widget):

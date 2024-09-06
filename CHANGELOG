@@ -70,3 +70,18 @@
 
 ### Removed
 - N\A
+
+
+## [v1.1.2] - 2024-09-06
+
+### Added
+- N/A
+
+### Changed
+- N/A
+
+### Fixed
+- Made habit details update when habit's tracking state changes.
+
+### Removed
+- N/A
