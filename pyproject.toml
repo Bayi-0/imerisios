@@ -2,7 +2,7 @@
 [tool.briefcase]
 project_name = "Imerisios"
 bundle = "com.amateru"
-version = "1.1.2"
+version = "2.0.0"
 url = "https://amateru.com/imerisios"
 license = "BSD license"
 author = "Vladyslav Bashchuk"
@@ -12,15 +12,17 @@ author_email = "vladbashchuk@gmail.com"
 formal_name = "Imerisios"
 description = "A versatile app for everyday use."
 long_description = """
-The app has four main functions, including coin flip, to-do list, habit tracker, and journal.
+The app has four main functions, including coin flip, to-do list, habit tracker, journal, and rankings.
 
 Coin flip: flip the coin to see either heads or tails.
 
-To-do list: create, read, edit, delete, mark as done tasks. Read history of completed tasks.
+To-do list: add, read, edit, remove, mark as done tasks. Read history of completed tasks.
 
-Habit tracker: create, read, rename, delete, complete/resume tracking, mark everyday as success/failure/skip habits. See analyzed data of created habits.
+Habit tracker: add, read, rename, remove, stop/resume tracking of habits, mark habits as success/failure/skip everyday. See analyzed data of added habits.
 
-Journal: create, read, edit entries. Create, read, edit, delete notes.
+Journal: add, read, edit entries. Add, read, edit, remove notes.
+
+Rankings: add, read, search for, edit, remove ranking entries.
 """
 icon = "src/imerisios/resources/imerisios"
 installer_icon = "src/imerisios/resources/imerisios"
@@ -31,7 +33,11 @@ test_sources = [
     "tests",
 ]
 
-requires = ["schedule", "Pillow"
+requires = [
+    "schedule", 
+    "Pillow", 
+    "titlecase", 
+    "nameparser"
 ]
 test_requires = ["pytest",]
 

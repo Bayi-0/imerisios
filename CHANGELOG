@@ -3,20 +3,20 @@
 ## [v1.0.0] - 2024-07-25
 
 ### Added
-- Initial release of the `Imerisios` app.
-- Coin flip functionality.
+- Initial release of the `Imerisios` app;
+- Coin flip functionality;
 - To-do list functionality:
-  - Ability to create, delete, edit, and mark tasks as done.
-  - Task categorization by tier, type, and urgency.
-  - History of completed tasks.
+  - Ability to create, delete, edit, and mark tasks as done,
+  - Task categorization by tier, type, and urgency,
+  - History of completed tasks;
 - Habit tracking functionality:
-  - Ability to create, delete, rename, and change the tracking state of habits.
-  - Ability to record successes, failures, and skips.
-  - View analyzed data of created habits.
-- Journal functionality for recording entries and notes.
+  - Ability to create, delete, rename, and change the tracking state of habits,
+  - Ability to record successes, failures, and skips,
+  - View analyzed data of created habits;
+- Journal functionality for recording entries and notes;
 - Settings functionality:
-  - Reset database.
-  - Reset today's data.
+  - Reset database,
+  - Reset today's data,
   - Backup and restore feature (alpha).
 
 ### Changed
@@ -82,6 +82,28 @@
 
 ### Fixed
 - Made habit details update when habit's tracking state changes.
+
+### Removed
+- N/A
+
+
+## [v2.0.0] - 2024-09-28
+
+### Added
+- Rankings functionality:
+  - Ability to add, read, search for, edit, and remove ranking entries,
+  - Entry sorting and filtering by various criterias;
+- Task, habits, journal notes and entries caching.
+
+### Changed
+- Create and delete became add and remove, complete (habits only) became stop;
+- Made different stylistic choices, in particular changed task and habits formatting, improved add/edit boxes;
+- Made some scroll containers change their position to 0 when opened.
+
+### Fixed
+- Fixed restore_databases;
+- Solved the problem with habit tracker not updating after today's habit records reset;
+- Updated dialog usage.
 
 ### Removed
 - N/A

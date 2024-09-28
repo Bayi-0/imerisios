@@ -12,9 +12,9 @@ class Habits:
         self.db_path = db_path
         self.img_path = img_path
 
-        self.widgets = {}
+        self.widgets = {"habits": {}}
         self.month_num_to_name, self.month_name_to_num = get_month_dicts()
-        self.data = {}
+        self.data = {"state images": [toga.Image("resources/habit/success.png"), toga.Image("resources/habit/failure.png"), toga.Image("resources/habit/skip.png")]}
         self.habit_more_setup = True
         
 
@@ -35,15 +35,14 @@ class Habits:
         
         today_button = toga.Button(
             "Today", on_press=self.habit_today, 
-            style=Pack(flex=0.4, padding=(4,44,4), height=44, font_size=11, color="#EBF6F7", background_color="#27221F")
-        )
+            style=Pack(flex=0.4, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F"))
 
         date_box = toga.Box(
             children=[date_input_box, today_button], 
             style=Pack(direction=COLUMN))
 
         self.habit_tracker_list_box = toga.Box(style=Pack(direction=COLUMN))
-        habit_tracker_list_container = toga.ScrollContainer(
+        self.habit_tracker_list_container = toga.ScrollContainer(
             content=self.habit_tracker_list_box, 
             horizontal=False, style=Pack(flex=0.8))
 
@@ -51,7 +50,7 @@ class Habits:
             children=[
                 label, toga.Divider(style=Pack(background_color="#27221F")), 
                 date_box, toga.Divider(style=Pack(background_color="#27221F")), 
-                habit_tracker_list_container
+                self.habit_tracker_list_container
             ], 
             style=Pack(direction=COLUMN, background_color="#393432"))
 
@@ -64,20 +63,20 @@ class Habits:
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
         
         self.habit_details_list_box = toga.Box(style=Pack(direction=COLUMN))
-        habit_details_list_container = toga.ScrollContainer(
+        self.habit_details_list_container = toga.ScrollContainer(
             content=self.habit_details_list_box, 
             horizontal=False, style=Pack(flex=0.8))
         
         habit_details_box = toga.Box(
-            children=[label, toga.Divider(style=Pack(background_color="#27221F")), habit_details_list_container], 
+            children=[label, toga.Divider(style=Pack(background_color="#27221F")), self.habit_details_list_container], 
             style=Pack(direction=COLUMN, background_color="#393432"))
 
         return habit_details_box
 
 
-    def get_create_habit_box(self):
+    def get_add_habit_box(self):
         label = toga.Label(
-            "Create a New Habit", 
+            "Add a New Habit", 
             style=Pack(flex=0.9, padding=14, text_align="center", font_weight="bold", font_size=18, color="#EBF6F7"))
 
         quotes_top = [
@@ -109,31 +108,31 @@ class Habits:
                 toga.Label(quotes_bottom[i+1], 
                 style=Pack(padding=(0,4,4), text_align="right", font_size=7, font_style="italic", color="#EBF6F7")))
 
-        create_label = toga.Label(
-            "Pray inscribe the habit thou wishest to\ncreate (no more than 34 characters):", 
+        add_label = toga.Label(
+            "Pray inscribe the habit thou wishest to\nadd (no more than 34 characters):", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.habit_create_input = toga.TextInput(
-            id="habit_create input 34",
+        self.habit_add_input = toga.TextInput(
+            id="habit_add input 34",
             on_change=length_check, 
             style=Pack(padding=(0,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        create_button = toga.Button(
-            "Create", on_press=self.create_habit, 
-            style=Pack(flex=0.5, height=120, padding=(11,11,19), font_size=22, color="#EBF6F7", background_color="#27221F"))
-        create_box = toga.Box(
-            children=[create_label, self.habit_create_input, create_button],
+        add_button = toga.Button(
+            "Add", on_press=self.add_habit, 
+            style=Pack(flex=0.5, height=120, padding=(11,11,18), font_size=24, color="#EBF6F7", background_color="#27221F"))
+        add_box = toga.Box(
+            children=[add_label, self.habit_add_input, add_button],
             style=Pack(direction=COLUMN, flex=0.26))
 
         
-        create_habit_box = toga.Box(
+        add_habit_box = toga.Box(
             children=[
                 label, toga.Divider(style=Pack(background_color="#27221F")), 
                 quotes_box_top, toga.Divider(style=Pack(background_color="#27221F")), 
-                create_box, toga.Divider(style=Pack(background_color="#27221F")),
+                add_box, toga.Divider(style=Pack(background_color="#27221F")),
                 quotes_box_bottom
             ], 
             style=Pack(direction=COLUMN, background_color="#393432"))
 
-        return create_habit_box
+        return add_habit_box
     
 
     def get_habit_more_box(self):
@@ -147,7 +146,7 @@ class Habits:
     def setup_habits(self):
         habit_tracker_box = self.get_habit_tracker_box()
         habit_details_box = self.get_habit_details_box()
-        create_habit_box = self.get_create_habit_box()
+        add_habit_box = self.get_add_habit_box()
         habit_more_box = self.get_habit_more_box()
     
         con, cur = get_connection(self.db_path)
@@ -178,14 +177,14 @@ class Habits:
 
         con.close()
 
-        return habit_tracker_box, habit_details_box, create_habit_box, habit_more_box
+        return habit_tracker_box, habit_details_box, add_habit_box, habit_more_box
     
 
     def update_habit(self, details=True, tracking=True, con_cur=None):
         con, cur = get_connection(self.db_path, con_cur)
 
-        self.create_habit_records(False, (con, cur))
-        self.delete_habit_records((con, cur))
+        self.add_habit_records(False, (con, cur))
+        self.remove_habit_records((con, cur))
         self.habit_get_data(details=details, tracking=tracking, con_cur=(con, cur))
         
         self.load_habits(None, False, details)
@@ -204,7 +203,6 @@ class Habits:
     
         for d in dates:
             iso = d.isoformat()
-            cur.execute("SELECT id, record_date FROM habit_records")
 
             cur.execute("""
                 SELECT habits.id, habits.name, habit_records.state
@@ -252,82 +250,38 @@ class Habits:
 
     def load_habits(self, widget, tracker=True, details=False):
         if tracker:
-            habit_box = self.habit_tracker_list_box
-            habit_box.clear()
+            list_box = self.habit_tracker_list_box
+            list_box.clear()
 
+            d = self.habit_tracker_date.value.isoformat()
             data = self.data[self.habit_tracker_date.value.isoformat()]
             if len(data) == 0:
-                    habit_box.add(toga.Label(
+                    list_box.add(toga.Label(
                         "No tracked habits on the day.",
                         style=Pack(padding=10, font_size=12, color="#EBF6F7")))
             else:
-                states = ["success", "failure", "skip"]
                 for h in data:
-                    button_box = toga.Box(style=Pack(direction=ROW))
-                    if h[2]:
-                        img_boxes = [toga.Box(style=Pack(direction=COLUMN, flex=0.33)) for i in range(3)]
-                        if h[2] == states[0]:
-                            img_boxes[0].add(toga.ImageView(toga.Image("resources/habit/success.png"), style=Pack(flex=1, alignment="center", height=40)))
-                        elif h[2] == states[1]:
-                            img_boxes[1].add(toga.ImageView(toga.Image("resources/habit/failure.png"), style=Pack(flex=1, alignment="center", height=40)))
-                        else:
-                            img_boxes[2].add(toga.ImageView(toga.Image("resources/habit/skip.png"), style=Pack(flex=1, alignment="center", height=40)))
-                        for i in range(3):
-                            button_box.add(img_boxes[i])
-                    else:
-                        for s in states:
-                            button_id = f"{h[0]} habit {s} button"
-                            if button_id not in self.widgets:
-                                self.widgets[button_id] = toga.Button(
-                                    s.capitalize(), id=button_id, on_press=self.change_habit_state_dialog, 
-                                    style=Pack(flex=0.33, height=42, font_size=12, color="#EBF6F7", background_color="#27221F"))
-                            button_box.add(self.widgets[button_id])
-
-                    habit_top = toga.Label(
-                        f"[{h[0]:04d}] | Current streak: {h[3]}", 
-                        style=Pack(padding=(14,4,4), flex=0.5, font_size=11, color="#EBF6F7"))
-                    habit_bottom = toga.Label(
-                        h[1], 
-                        style=Pack(padding=(0,4,0), flex=0.5, font_size=11, color="#EBF6F7"))
-                    habit_box.add(
-                        toga.Box(
-                            children=[
-                                habit_top,
-                                habit_bottom,
-                                button_box], 
-                            style=Pack(direction=COLUMN)),
-                        toga.Divider(style=Pack(background_color="#27221F")))
+                    id = h[0]
+                    if d not in self.widgets["habits"]:
+                        self.widgets["habits"][d] = {}
+                    if id not in self.widgets["habits"][d]:
+                        self.widgets["habits"][d][id] = self.get_habit_box(h, d)
+                    list_box.add(self.widgets["habits"][d][id])
                     
         if details:
-            habit_box = self.habit_details_list_box
-            habit_box.clear()
+            list_box = self.habit_details_list_box
+            list_box.clear()
 
             data = self.data["list"]
             if len(data) == 0:
-                    habit_box.add(toga.Label(
+                    list_box.add(toga.Label(
                         "All habits will appear here.",
                         style=Pack(padding=10, font_size=12, color="#EBF6F7")))
             for h in data:
-                button_id = f"{h[0]} details button"
-                tracked = "No" if h[2] else "Yes"
-                if button_id not in self.widgets:
-                    self.widgets[button_id] = toga.Button(
-                                        "More", id=button_id, on_press=self.app.open_habit_more, 
-                                        style=Pack(flex=0.14, height=72, font_size=12, color="#EBF6F7", background_color="#27221F"))
-                habit_top = toga.Label(
-                    f"[{h[0]:04d}] | Tracked: {tracked}", 
-                    style=Pack(padding=(14,4,4), flex=0.5, font_size=11, color="#EBF6F7"))
-                habit_bottom = toga.Label(
-                    h[1], 
-                    style=Pack(padding=(0,4,14), flex=0.5, font_size=11, color="#EBF6F7"))
-                habit_label_box = toga.Box(children=[habit_top, habit_bottom], style=Pack(direction=COLUMN, flex=0.86))
-                
-                habit_box.add(toga.Box(
-                            children=[
-                                habit_label_box,
-                                self.widgets[button_id]], 
-                            style=Pack(direction=ROW)),
-                        toga.Divider(style=Pack(background_color="#27221F")))
+                id = h[0]
+                if id not in self.widgets["habits"]:
+                    self.widgets["habits"][id] = self.get_habit_box(h)
+                list_box.add(self.widgets["habits"][id])
 
 
     def load_habit_more(self, id):
@@ -341,7 +295,7 @@ class Habits:
             SELECT name, created_date, completed_date, longest_streak FROM habits
             WHERE id = ?;
         """, (id,))
-        name, created_date, completed_date, longest_streak = cur.fetchone()
+        name, added_date, stopped_date, longest_streak = cur.fetchone()
 
         cur.execute("""
             SELECT COUNT(*) FROM habit_records
@@ -471,18 +425,18 @@ class Habits:
                 "Dates", 
                 style=Pack(padding=14, text_align="center", font_size=14, color="#EBF6F7"))
         self.dates_label = self.widgets["habit_more dates label"]
-        self.created_label = toga.Label(
-            f"Created: {created_date}", 
+        self.added_label = toga.Label(
+            f"Added: {added_date}", 
             style=Pack(padding=(14,20), font_size=14, color="#EBF6F7"))
-        completed = completed_date if completed_date else '—'
-        completed_label = toga.Label(
-            f"Completed: {completed}", 
+        stopped = stopped_date if stopped_date else '—'
+        stopped_label = toga.Label(
+            f"Stopped: {stopped}", 
             style=Pack(padding=(0,20,14), font_size=14, color="#EBF6F7"))
         self.habit_dates_box = toga.Box(
             children=[
                 self.dates_label, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")), 
-                self.created_label, 
-                completed_label
+                self.added_label, 
+                stopped_label
             ], 
             style=Pack(direction=COLUMN))
         if self.habit_more_setup:
@@ -551,11 +505,11 @@ class Habits:
             self.widgets["habit_more year label"] = toga.Label(
                 "Year:", 
                 style=Pack(flex=0.3, padding=(14,0,0,20), font_size=14, color="#EBF6F7"))
-            self.widgets["habit_more year select"] = toga.Selection(style=Pack(flex=0.7, padding=16))
+            self.widgets["habit_more year select"] = toga.Selection(style=Pack(flex=0.7, padding=(6,16,0), height=44))
             self.widgets["habit_more month label"] = toga.Label(
                 "Month:", 
-                style=Pack(flex=0.3, padding=(0,0,0,20), font_size=14, color="#EBF6F7"))
-            self.widgets["habit_more month select"] = toga.Selection(style=Pack(flex=0.7, padding=(2,16,16)))
+                style=Pack(flex=0.3, padding=(14,0,0,20), font_size=14, color="#EBF6F7"))
+            self.widgets["habit_more month select"] = toga.Selection(style=Pack(flex=0.7, padding=(6,16,0), height=44))
         record_calendar_label = self.widgets["habit_more calendar label"]
         year_select_label = self.widgets["habit_more year label"]
         year_select = self.widgets["habit_more year select"]
@@ -586,18 +540,18 @@ class Habits:
                 style=Pack(padding=(8,18,0), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
             self.widgets["habit_more rename button"] =toga.Button(
                 "Rename", on_press=self.rename_habit_dialog, 
-                style=Pack(flex=0.5, height=120, padding=(0,11), font_size=22, color="#EBF6F7", background_color="#27221F"))
-            self.widgets["habit_more delete button"] = toga.Button(
-                "Delete", on_press=self.delete_habit_dialog, 
-                style=Pack(flex=0.5, height=120, padding=(4,4,11,11), font_size=22, color="#EBF6F7", background_color="#27221F"))
-            self.widgets["habit_more complete button"] = toga.Button(
-                "Complete", on_press=self.tracking_habit_dialog, 
-                id="habit complete button",
-                style=Pack(flex=0.5, height=120, padding=(4,11,11,4), font_size=22, color="#EBF6F7", background_color="#27221F"))
+                style=Pack(flex=0.5, height=120, padding=(0,11), font_size=24, color="#EBF6F7", background_color="#27221F"))
+            self.widgets["habit_more remove button"] = toga.Button(
+                "Remove", on_press=self.remove_habit_dialog, 
+                style=Pack(flex=0.5, height=120, padding=(4,4,11,11), font_size=24, color="#EBF6F7", background_color="#27221F"))
+            self.widgets["habit_more stop button"] = toga.Button(
+                "Stop", on_press=self.tracking_habit_dialog, 
+                id="habit stop button",
+                style=Pack(flex=0.5, height=120, padding=(4,11,11,4), font_size=24, color="#EBF6F7", background_color="#27221F"))
             self.widgets["habit_more resume button"] = toga.Button(
                 "Resume", on_press=self.tracking_habit_dialog, 
                 id="habit resume button",
-                style=Pack(flex=0.5, height=120, padding=(4,11,11,4), font_size=22, color="#EBF6F7", background_color="#27221F"))
+                style=Pack(flex=0.5, height=120, padding=(4,11,11,4), font_size=24, color="#EBF6F7", background_color="#27221F"))
         habit_more_manage_label = self.widgets["habit_more manage label"]    
         self.habit_more_rename_input = self.widgets["habit_more rename input"]
         self.habit_more_rename_input.value = ""
@@ -605,12 +559,12 @@ class Habits:
         rename_box = toga.Box(
             children=[self.habit_more_rename_input, rename_button], 
             style=Pack(direction=COLUMN, flex=0.3))
-        self.habit_more_delete_button = self.widgets["habit_more delete button"]
-        self.habit_more_complete_button = self.widgets["habit_more complete button"]
+        self.habit_more_remove_button = self.widgets["habit_more remove button"]
+        self.habit_more_stop_button = self.widgets["habit_more stop button"]
         self.habit_more_resume_button = self.widgets["habit_more resume button"]
-        button = self.habit_more_resume_button if self.data["tracking"][id] else self.habit_more_complete_button
+        button = self.habit_more_resume_button if self.data["tracking"][id] else self.habit_more_stop_button
         self.habit_more_button_box = toga.Box(
-            children=[self.habit_more_delete_button, button],
+            children=[self.habit_more_remove_button, button],
             style=Pack(direction=ROW, flex=0.16))
         habit_more_manage_box = toga.Box(
             children=[
@@ -657,13 +611,13 @@ class Habits:
 
     async def change_habit_state_dialog(self, widget):
         splt = widget.id.split()
-        result = await self.app.main_window.question_dialog("Confirmation", f"Art thou certain thou wishest to set [{int(splt[0]):04d}] habit's state to {splt[2]}?")
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", f"Art thou certain thou wishest to set [{int(splt[0]):04d}] habit's state to {splt[2]}?"))
         if result:
             await self.change_habit_state(splt)
 
 
     async def change_habit_state(self, splt):
-        habit_id = splt[0]
+        habit_id = int(splt[0])
         state = splt[2]
         record_date = self.habit_tracker_date.value
 
@@ -702,11 +656,20 @@ class Habits:
             """, (current_streak, habit_id,))
             con.commit()
 
-        dates = [record_date]
+        record_iso = record_date.isoformat()
+
+        dates = [record_date,]
         if record_date != date.today():
             difference = (date.today()-record_date).days
             for i in range(1, difference+1):
                 dates.append(record_date+timedelta(days=i))
+        for d in dates:
+            d = d.isoformat()
+            if d in self.widgets["habits"]:
+                if habit_id in self.widgets["habits"][d]:
+                    del self.widgets["habits"][d][habit_id]
+                    if d == record_iso:
+                        del self.widgets["habits"][d][f"{habit_id} habit state button"]
 
         self.habit_get_data(dates=dates, con_cur=(con, cur))
         self.load_habits(None)
@@ -714,8 +677,8 @@ class Habits:
         con.close()
 
 
-    def create_habit(self, widget):
-        if habit_name := self.habit_create_input.value.strip():
+    async def add_habit(self, widget):
+        if habit_name := self.habit_add_input.value.strip():
             con, cur = get_connection(self.db_path)
             
             cur.execute("""
@@ -723,8 +686,8 @@ class Habits:
                 WHERE name = ?;
                 """, (habit_name,))
             if result := cur.fetchone():
-                self.app.main_window.info_dialog("Habit Already Exists", f"Habit [{result[0]:04d}] already uses this name.")
-                self.habit_create_input.value = ""
+                await self.app.dialog(toga.InfonDialog("Habit Already Exists", f"Habit [{result[0]:04d}] already uses this name."))
+                self.habit_add_input.value = ""
             else:
                 cur.execute("""
                     INSERT INTO habits (name)
@@ -732,7 +695,7 @@ class Habits:
                     """, (habit_name,))
                 con.commit()
 
-                self.create_habit_records(load=False, con_cur=(con, cur))
+                self.add_habit_records(load=False, con_cur=(con, cur))
                 self.habit_get_data(dates=[date.today()], details=True, tracking=True, con_cur=(con, cur))
 
                 self.habit_tracker_date.value = date.today()
@@ -742,14 +705,14 @@ class Habits:
             con.close()
     
 
-    def create_habit_records(self, load=True, con_cur=None):
+    def add_habit_records(self, load=True, con_cur=None):
         con, cur = get_connection(self.db_path, con_cur)
 
         cur.execute("""
             SELECT habit_id FROM habit_records
             WHERE record_date IS ?;
         """, (date.today(),))
-        created = cur.fetchall()
+        added = cur.fetchall()
 
         cur.execute("""
             SELECT id FROM habits
@@ -757,7 +720,7 @@ class Habits:
         """)
         tracked = cur.fetchall()
 
-        ids = set(tracked) - set(created)
+        ids = set(tracked) - set(added)
 
         if ids:
             cur.executemany("""
@@ -773,7 +736,7 @@ class Habits:
         close_connection(con, con_cur)
 
 
-    def delete_habit_records(self, con_cur):
+    def remove_habit_records(self, con_cur):
         con, cur = get_connection(self.db_path, con_cur)
         
         cur.execute("""
@@ -785,13 +748,13 @@ class Habits:
 
         close_connection(con, con_cur)
 
-    async def delete_habit_dialog(self, widget):
-        result = await self.app.main_window.question_dialog("Confirmation", "Art thou certain thou wishest to delete the habit?")
+    async def remove_habit_dialog(self, widget):
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Art thou certain thou wishest to remove the habit?"))
         if result:
-            await self.delete_habit()
+            await self.remove_habit()
 
 
-    async def delete_habit(self):
+    async def remove_habit(self):
         id = self.temp_habit_id
 
         con, cur = get_connection(self.db_path)
@@ -812,23 +775,31 @@ class Habits:
 
         con.close()
 
+        for d in dates:
+            if d in self.widgets["habits"]:
+                if id in self.widgets["habits"][d]:
+                    del self.widgets["habits"][d][id]
+                    del self.widgets["habits"][d][f"{id} habit state button"]
+        if id in self.widgets["habits"]:
+            del self.widgets["habits"][id]
+
         self.load_habits(None, details=True)
         self.app.open_habit_details(None)
 
 
     async def tracking_habit_dialog(self, widget):
-        complete = widget.id.split()[1] == "complete"
-        word = "complete" if complete else "resume"
-        result = await self.app.main_window.question_dialog("Confirmation", f"Art thou certain thou wishest to {word} tracking the habit?")
+        stop = widget.id.split()[1] == "stop"
+        word = "stop" if stop else "resume"
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", f"Art thou certain thou wishest to {word} tracking the habit?"))
         if result:
-            await self.tracking_habit(complete)
+            await self.tracking_habit(stop)
 
     
-    async def tracking_habit(self, complete):
+    async def tracking_habit(self, stop):
         con, cur = get_connection(self.db_path)
 
         id = self.temp_habit_id
-        if complete:
+        if stop:
             cur.execute("""
                 UPDATE habits
                 SET completed_date = ?
@@ -841,35 +812,38 @@ class Habits:
                 WHERE id = ?;
             """, (id,))
 
-            self.create_habit_records(con_cur=(con, cur))
+            self.add_habit_records(con_cur=(con, cur))
             
         con.commit()
 
         self.habit_get_data(dates=[], details=True, tracking=True, con_cur=(con, cur))
         con.close()     
 
-        completed_date = self.data["tracking"][id]
-        completed = completed_date if completed_date else '—'
-        completed_label = toga.Label(
-            f"Completed: {completed}", 
+        stopped_date = self.data["tracking"][id]
+        stopped = stopped_date if stopped_date else '—'
+        stopped_label = toga.Label(
+            f"Stopped: {stopped}", 
             style=Pack(padding=(0,20,14), font_size=14, color="#EBF6F7"))
         self.habit_dates_box.clear()
         self.habit_dates_box.add(
                 self.dates_label, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")), 
-                self.created_label, 
-                completed_label)
+                self.added_label, 
+                stopped_label)
         box = self.habit_more_button_box
         box.clear()
-        completed = self.data["tracking"][id]
-        button = self.habit_more_resume_button if completed else self.habit_more_complete_button
-        box.add(self.habit_more_delete_button, button)
+        stopped = self.data["tracking"][id]
+        button = self.habit_more_resume_button if stopped else self.habit_more_stop_button
+        box.add(self.habit_more_remove_button, button)
+
+        if id in self.widgets["habits"]:
+            del self.widgets["habits"][id]
 
         self.load_habits(None, tracker=False, details=True)
 
     
     async def rename_habit_dialog(self, widget):
         if self.habit_more_rename_input.value:
-            result = await self.app.main_window.question_dialog("Confirmation", "Art thou certain thou wishest to rename the habit?")
+            result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Art thou certain thou wishest to rename the habit?"))
             if result:
                 await self.rename_habit()
 
@@ -886,7 +860,7 @@ class Habits:
                 WHERE name = ?;
                 """, (new_name,))
         if result := cur.fetchone():
-            self.app.main_window.info_dialog("Habit Already Exists", f"Habit [{result[0]:04d}] already uses this name.")
+            self.app.dialog(toga.InfoDialog("Habit Already Exists", f"Habit [{result[0]:04d}] already uses this name."))
             self.habit_more_rename_input.value = ""
         else:
             cur.execute("""
@@ -904,6 +878,13 @@ class Habits:
             con.commit()
 
             self.habit_get_data(dates=[date.fromisoformat(d[0]) for d in dates], details=True, tracking=True, con_cur=(con, cur))
+
+            for d in dates:
+                if d in self.widgets["habits"]:
+                    if id in self.widgets["habits"][d]:
+                        del self.widgets["habits"][d][id]
+            if id in self.widgets["habits"]:
+                del self.widgets["habits"][id]
 
             self.load_habits(None, details=True)
             habit_more_label = toga.Label(
@@ -926,7 +907,7 @@ class Habits:
     
 
     async def reset_habit_dialog(self, widget):
-        result = await self.app.main_window.question_dialog("Confirmation", "Are you sure you wish to reset Habits database?")
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you wish to reset Habits database?"))
         if result:
             await self.reset_habit()
 
@@ -937,7 +918,7 @@ class Habits:
         cur.execute("DROP TABLE habit_records;")
         con.commit()
 
-        cur.execute("""
+        cur.executescript("""
             CREATE TABLE habits (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -945,8 +926,7 @@ class Habits:
             created_date DATE DEFAULT (date('now', 'localtime')),
             completed_date DATE
             );
-        """)
-        cur.execute("""
+                          
             CREATE TABLE habit_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             habit_id INTEGER NOT NULL,
@@ -954,21 +934,19 @@ class Habits:
             state TEXT CHECK(state IN ('success', 'failure', 'skip')),
             FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE ON UPDATE CASCADE
             );
+                          
+            CREATE INDEX idx_habit_records_state ON habit_records(state);
+            CREATE INDEX idx_habit_records_date ON habit_records(record_date);       
         """)
-        cur.execute("CREATE INDEX idx_habit_records_state ON habit_records(state);")
-        cur.execute("CREATE INDEX idx_habit_records_date ON habit_records(record_date);")
         con.commit()
-
-        self.habit_get_data(details=True, con_cur=(con, cur))
-
         con.close()
+        
+        self.app.setup_ui(habits=True)
 
-        self.load_habits(None, details=True, tracking=True)
-
-        await self.app.main_window.info_dialog("Success", "Habits database was successfully reset.")
+        await self.app.dialog(toga.InfoDialog("Success", "Habits database was successfully reset."))
 
     
-    def reset_today_habit_records(self, widget):
+    async def reset_today_habit_records(self, widget):
         con, cur = get_connection(self.db_path)
 
         cur.execute("""
@@ -984,13 +962,82 @@ class Habits:
                 AND record_date = ?;
             """, (id, date.today(),))
         con.commit()
-
         con.close()
+
+        self.app.setup_ui(habits=True)
+
+        await self.app.dialog(toga.InfoDialog("Success", "Today's habit records were reset successfully."))
 
     
     def habit_today(self, widget):
         self.habit_tracker_date.value = date.today()
 
 
-    def clear_create_habit(self):
-        self.habit_create_input.value = ""
+    def clear_add_habit(self):
+        self.habit_add_input.value = ""
+
+    
+    def get_habit_box(self, habit, tracker_date=None):
+        id = habit[0]
+
+        if tracker_date:
+            button_id = f"{id} habit state button"
+            if button_id not in self.widgets["habits"][tracker_date]:
+                states = ["success", "failure", "skip"]
+                button_box = toga.Box(style=Pack(direction=ROW))
+                if habit[2]:
+                    img_boxes = [toga.Box(style=Pack(direction=COLUMN, flex=0.33)) for i in range(3)]
+                    for i in range(3):
+                        if habit[2] == states[i]:
+                            img_boxes[i].add(toga.ImageView(self.data["state images"][i], style=Pack(flex=1, alignment="center", height=40)))
+                            break
+                    for i in range(3):
+                        button_box.add(img_boxes[i])
+                else:
+                    for s in states:
+                        state_button_id = f"{id} habit {s} button"
+                        button = toga.Button(
+                            s, id=state_button_id, on_press=self.change_habit_state_dialog, 
+                            style=Pack(flex=0.33, height=42, font_size=12, color="#EBF6F7", background_color="#27221F"))
+                        button_box.add(button)
+                self.widgets["habits"][tracker_date][button_id] = button_box
+            button = self.widgets["habits"][tracker_date][button_id]
+            bottom_str = f"Current streak: {habit[3]}"
+        else:
+            button_id = f"{id} habit more button"
+            if button_id not in self.widgets["habits"]:
+                self.widgets["habits"][button_id] = toga.Button(
+                    "More", id=button_id, on_press=self.app.open_habit_more, 
+                    style=Pack(flex=0.14, height=80, font_size=12, color="#EBF6F7", background_color="#27221F"))
+            button = self.widgets["habits"][button_id]
+
+            tracked = "No" if habit[2] else "Yes"
+            bottom_str = f"Tracked: {tracked}"
+
+        id_label = toga.Label(
+            f"[{id:06d}]", 
+            style=Pack(padding=4, font_size=11, color="#EBF6F7"))
+        
+        main_label = toga.Label(
+            habit[1], 
+            style=Pack(padding=4, font_size=11, font_weight="bold", color="#EBF6F7"))
+        
+        bottom_padding = (4,4,0) if tracker_date else 4
+        bottom_label = toga.Label(
+            bottom_str, 
+            style=Pack(padding=bottom_padding, font_size=11, color="#EBF6F7"))
+        
+        habit_label_box = toga.Box(children=[id_label, main_label, bottom_label], style=Pack(direction=COLUMN, flex=0.85))
+
+        children = [habit_label_box, button]
+        direction = COLUMN if tracker_date else ROW
+
+        habit_box = toga.Box(
+            children=children,
+            style=Pack(direction=direction))
+        
+        habit_box = toga.Box(
+            children=[habit_box, toga.Divider(style=Pack(background_color="#27221F"))],
+            style=Pack(direction=COLUMN))
+    
+        return habit_box

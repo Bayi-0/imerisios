@@ -1,10 +1,8 @@
 # Imerisios
 
-#### Video Demo: https://youtu.be/lBq1BzejSqM
-
 ## Description
 
-The app provides a versatile set of functionalities including a coin flip, to-do list management, habit tracking, and journaling. It features a user-friendly interface with dynamic navigation, allowing users to easily switch between different features and access settings. The app also includes backup and restore capabilities for its databases, ensuring user data is safely managed. 
+The app provides a versatile set of functionalities including coin flip, to-do list, habit tracking, journaling, and rankings. It features a user-friendly interface with dynamic navigation, allowing users to easily switch between different features and access settings. The app also includes backup and restore capabilities for its databases, ensuring user data is safely managed. 
 
 ## Installation
 
@@ -44,7 +42,7 @@ The app provides a versatile set of functionalities including a coin flip, to-do
 
 Can be installed and used on Android devices. 
 
-Warning: the app's UI is not flexible and looks bad on most of the screens. Works properly on this screen: 6.67 inches, 1080 x 2400 pixels, 20:9 ratio (~395 ppi density).
+Warning: the app's UI is not flexible and looks bad on most of the screens. Works properly on the following screen: 6.67 inches, 1080 x 2400 pixels, 20:9 ratio (~395 ppi density).
 
 ## Functionalities
 
@@ -76,7 +74,13 @@ Warning: the app's UI is not flexible and looks bad on most of the screens. Work
 - **Journal Entries**: Users can create and manage journal entries. The `Journal` class provides functionalities to create, view, and edit journal entries and notes.
 - **Notes Management**: Users can add and edit notes within their journal.
 
-##### 6. Backup and Restore
+##### 6. Rankings
+
+- **Ranking Entries**: Users can create and manage rankings for books, movies, and other media. The `Ranking` class provides functionalities to add, view, update, and remove rankings based on user preferences.
+- **Rating System**: Users can assign ratings to each entry, allowing for a clear evaluation of their experiences with different media.
+- **Category Management**: Users can categorize rankings by type (e.g., book, movie), enabling easy filtering and organization of their ranked entries.
+
+##### 7. Backup and Restore
 
 - **Database Backup**: Allows users to back up their app databases to the device's Downloads folder. Implemented using Android's file system APIs and SQLite.
 - **Database Restore**: Restores databases from the Downloads folder, ensuring user data can be recovered if needed.
@@ -100,6 +104,7 @@ Warning: the app's UI is not flexible and looks bad on most of the screens. Work
 - **To-Do List Box**: Includes tabs for daily tasks, task history, and task creation.
 - **Habit Tracker Box**: Provides views for tracking habits, managing details, and more.
 - **Journal Box**: Displays journal entries and notes with options to create and edit content.
+- **Rankings Box**: Provides views for rankings, managing ranking entries, and more.
 
 ##### Image Resources
 
@@ -107,6 +112,7 @@ Warning: the app's UI is not flexible and looks bad on most of the screens. Work
 - **To-Do Image**: Located at `resources/menu/todo.png`. Created using a public domain image, and Adobe Photoshop.
 - **Habits Image**: Located at `resources/menu/habit.png`. Created using a public domain image, and Adobe Photoshop.
 - **Journal Image**: Located at `resources/menu/journal.png`. Created using a public domain image, and Adobe Photoshop.
+- **Rankings Image**: Located at `resources/menu/ranking.png`. Created using a public domain image, and Adobe Photoshop.
 
 This section outlines the core functionalities and implementation details of the app, ensuring users understand how to navigate and use each feature effectively.
 
@@ -433,6 +439,91 @@ The schema for notes includes:
 
 This feature integrates seamlessly with the rest of the application, offering a comprehensive tool for recording and reflecting on personal thoughts and experiences.
 
+### ranking.py
+
+#### Overview
+
+The Ranking feature is a vital component of our application, designed to help users evaluate and prioritize the books, movies, and other media they have experienced. This feature allows users to add, update, and remove rankings, providing insights into their preferences and facilitating better recommendations.
+
+#### Features
+
+##### 1. **Ranking Management**
+
+- **Add Rankings**: Users can add new rankings by specifying the title, category (e.g., book, movie), rating, and optional comments. Rankings are categorized to allow easy identification of media types.
+
+- **Update Rankings**: Existing rankings can be edited to update any attributes, including title, category, rating, and comments.
+
+- **Remove Rankings**: Users can permanently remove rankings from their list, allowing for effective management of their evaluations.
+
+##### 2. **Ranking Filtering**
+
+- **Category Filtering**: Rankings can be filtered based on media category (e.g., books, movies), enabling users to focus on specific types of media.
+
+- **Rating Filtering**: Users can view rankings filtered by rating to easily identify highly rated or low-rated media.
+
+##### 3. **Ranking View**
+
+- **Sorted Rankings**: Users can view their rankings sorted by rating or title, providing an organized overview of their evaluations.
+
+- **Detailed View**: Clicking on a ranking reveals additional details, including comments and media type, offering a comprehensive understanding of the user's preferences.
+
+##### 4. **Database Integration**
+
+- **Ranking Database**: The Ranking functionality relies on a SQLite database to store and manage rankings. The database schema includes tables for rankings with relevant attributes, ensuring efficient data retrieval.
+
+- **Dynamic Updates**: The application updates rankings dynamically based on user interactions and maintains data integrity through database constraints.
+
+##### 5. **Reset Functionality**
+
+- **Reset Database**: Users can reset the Ranking database if needed, which drops and recreates the ranking tables. This functionality is useful for starting afresh or clearing out old data.
+
+#### Implementation Details
+
+##### Database Schema
+
+The database schema for rankings includes:
+
+- **id**: A unique identifier for each ranking (`INTEGER PRIMARY KEY AUTOINCREMENT`).
+- **title**: The name of the media being ranked (`TEXT NOT NULL`).
+- **category**: The type of media (`TEXT CHECK(category IN ('book', 'movie')) NOT NULL`).
+- **rating**: The user's rating of the media (`INTEGER CHECK(rating BETWEEN 1 AND 10) NOT NULL`).
+- **comments**: Optional comments about the media (`TEXT`).
+- **added_date**: The date the ranking was added (`DATE DEFAULT (date('now', 'localtime'))`).
+
+##### Key Functions
+
+- **setup_ranking**: Initializes the Ranking application, creating the necessary database tables and indices.
+- **add_entry**: Adds a new ranking entry to the database.
+- **update_ranking**: Updates the attributes of an existing ranking.
+- **remove_ranking**: Deletes a ranking from the database.
+- **ranking_get_data**: Retrieves rankings from the database based on filters like category or rating.
+- **reset_ranking**: Resets the entire Ranking database, including dropping and recreating tables.
+
+##### User Interface
+
+- **Rankings List**: Displays rankings sorted by rating or title, allowing interaction with each ranking.
+- **Rankings Sort**: Allows users to sort and filter rankings by different criterias.
+- **Rankings Search**: Enables users to search for a particular entry in the rankings.
+- **Add Ranking Box**: Allows users to input new ranking details, including title, category, and rating.
+- **Edit Ranking Box**: Enables users to modify existing rankings.
+
+##### Image Resources
+
+- **Book Tab Icon**: Located at `resources/ranking/book.png`. Created using an image by mikan933 and Adobe Photoshop.
+- **Movie Tab Icon**: Located at `resources/ranking/movie.png`. Created using an image by Freepik and Adobe Photoshop.
+- **Series Tab Icon**: Located at `resources/ranking/series.png`. Created using an image by cube29 and Adobe Photoshop.
+- **Music Tab Icon**: Located at `resources/ranking/music.png`. Created using an image by Freepik and Adobe Photoshop.
+
+#### Usage
+
+- **Setup**: Initialize the application using the `setup_ranking` function.
+- **Add Rankings**: Use the Add Ranking Box to input new rankings.
+- **Edit Rankings**: Select a ranking and use the Edit Ranking Box to modify its details.
+- **Remove Rankings**: Delete rankings using the provided remove functionality.
+- **View Rankings**: Check sorted rankings in the Rankings List.
+
+This feature seamlessly integrates with the rest of the application, providing users with a powerful tool for evaluating and managing their media preferences.
+
 ## License
 
 This project is licensed under the BSD-3-Clause License - see the [LICENSE](LICENSE) file for details.
@@ -442,4 +533,6 @@ This project is licensed under the BSD-3-Clause License - see the [LICENSE](LICE
 - [**Toga**](https://toga.readthedocs.io/)
 - [**Briefcase**](https://briefcase.readthedocs.io/)
 - [**Pillow**](https://pillow.readthedocs.io/)
-- [**Schedule**](https://schedule.readthedocs.io/)
+- [**Schedule**](https://schedule.readthedocs.io/)s
+- [**Titlecase**](https://pypi.org/project/titlecase/)
+- [**Nameparser**](https://nameparser.readthedocs.io/)

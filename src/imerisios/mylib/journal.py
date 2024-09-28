@@ -12,7 +12,13 @@ class Journal:
         self.db_path = db_path
 
         self.widgets = {}
-        self.journal_data = {}
+        self.data = {"entries": {}}
+        self.data["entry quotes"] = [
+            "“The world changes, and all that once was strong now proves unsure.”", "— Théoden, The Lord of the Rings by J.R.R. Tolkien", 
+            "“Memories warm you up from the inside. But they also tear you apart.”", "— Haruki Murakami, Kafka on the Shore",
+            "“The past always seems better when you look back on it than it did at the time.”", "— Robert Jordan, For Whom the Bell Tolls by Ernest Hemingway",
+            "“No matter how much suffering you went through, you never wanted to let go of those\nmemories.”", "— Toru Watanabe, Norwegian Wood by Haruki Murakami"
+        ]
         self.month_num_to_name, self.month_name_to_num = get_month_dicts()
 
     
@@ -88,7 +94,7 @@ class Journal:
         self.journal_entries_year_select = toga.Selection(
             id="journal_entries date year", 
             on_change=self.load_entry,
-            style=Pack(padding=(0,4,14))
+            style=Pack(padding=(0,4), height=44)
         )
         year_box = toga.Box(children=[year_label, self.journal_entries_year_select], style=Pack(direction=COLUMN, flex=0.3))
 
@@ -96,7 +102,7 @@ class Journal:
         self.journal_entries_month_select = toga.Selection(
             id="journal_entries date month", 
             on_change=self.load_entry,
-            style=Pack(padding=(0,4,14))
+            style=Pack(padding=(0,4), height=44)
         )
         month_box = toga.Box(children=[month_label, self.journal_entries_month_select], style=Pack(direction=COLUMN, flex=0.45))
 
@@ -104,7 +110,7 @@ class Journal:
         self.journal_entries_day_select = toga.Selection(
             id="journal_entries date day", 
             on_change=self.load_entry,
-            style=Pack(padding=(0,4,14))
+            style=Pack(padding=(0,4), height=44)
         )
         day_box = toga.Box(children=[day_label, self.journal_entries_day_select], style=Pack(direction=COLUMN, flex=0.25))
 
@@ -114,26 +120,25 @@ class Journal:
         
         today_button = toga.Button(
             "Today", on_press=self.entry_today, 
-            style=Pack(flex=0.3, padding=(0,44,4), height=44, font_size=11, color="#EBF6F7", background_color="#27221F")
+            style=Pack(flex=0.3, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
         )
         
         date_box = toga.Box(
             children=[date_selection_box, today_button],
             style=Pack(direction=COLUMN))
 
-
-        self.journal_entries_input = toga.MultilineTextInput(placeholder="thy entry", style=Pack(flex=0.59, padding=(0,11), font_size=12, color="#EBF6F7", background_color="#27221F"))
+        self.journal_entries_input = toga.MultilineTextInput(placeholder="thy entry", style=Pack(flex=0.6, padding=(0,11), font_size=12, color="#EBF6F7", background_color="#27221F"))
 
         self.journal_entries_save_button = toga.Button(
             "Save", on_press=self.save_entry_dialog, 
-            style=Pack(height=140, padding=(0,11,11), font_size=28, color="#EBF6F7", background_color="#27221F"))
+            style=Pack(height=120, padding=11, font_size=24, color="#EBF6F7", background_color="#27221F"))
         self.journal_entries_save_box = toga.Box(style=Pack(direction=COLUMN, flex=0.21))
         
         entries_box = toga.Box(
             children=[
             label, toga.Divider(style=Pack(background_color="#27221F")),
             date_box, toga.Divider(style=Pack(background_color="#27221F")),
-            self.journal_entries_input,
+            self.journal_entries_input, toga.Divider(style=Pack(background_color="#27221F")),
             self.journal_entries_save_box
             ], 
             style=Pack(direction=COLUMN, background_color="#393432"))
@@ -146,12 +151,12 @@ class Journal:
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
 
         self.journal_notes_list_box = toga.Box(style=Pack(direction=COLUMN))
-        journal_notes_list_container = toga.ScrollContainer(content=self.journal_notes_list_box, horizontal=False, style=Pack(flex=0.9))
+        self.journal_notes_list_container = toga.ScrollContainer(content=self.journal_notes_list_box, horizontal=False, style=Pack(flex=0.9))
 
         notes_box = toga.Box(
             children=[
             label, toga.Divider(style=Pack(background_color="#27221F")),
-            journal_notes_list_container
+            self.journal_notes_list_container
             ], 
             style=Pack(direction=COLUMN, background_color="#393432")
         )
@@ -159,47 +164,46 @@ class Journal:
         return notes_box
 
 
-    def get_note_create_box(self):
+    def get_note_add_box(self):
         label = toga.Label(
-            "Create a New Note", 
+            "Add a New Note", 
             style=Pack(flex=0.09, padding=14, text_align="center", font_weight="bold", font_size=18, color="#EBF6F7"))
         
         title_label = toga.Label(
             "Title (no more than 34 characters):", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.journal_notes_create_title_input = toga.TextInput(
-            id="note_create_title input 34",
+        self.journal_notes_add_title_input = toga.TextInput(
+            id="note_add_title input 34",
             on_change=length_check, 
-            style=Pack(padding=(0,11), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+            style=Pack(padding=(0,11,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
         
         content_label = toga.Label(
             "Content:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.journal_notes_create_content_input = toga.MultilineTextInput(style=Pack(flex=0.7, padding=(0,11), font_size=12, color="#EBF6F7", background_color="#27221F"))
+        self.journal_notes_add_content_input = toga.MultilineTextInput(style=Pack(flex=0.72, padding=(0,11), font_size=12, color="#EBF6F7", background_color="#27221F"))
 
         top_box = toga.Box(
             children=[
-                title_label,
-                self.journal_notes_create_title_input,
-                content_label,
-                self.journal_notes_create_content_input
+                title_label, self.journal_notes_add_title_input, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")), 
+                content_label, self.journal_notes_add_content_input 
             ],
-            style=Pack(direction=COLUMN, flex=0.79))
+            style=Pack(direction=COLUMN, flex=0.8))
+        top_container = toga.ScrollContainer(content=top_box, horizontal=False, vertical=False, style=Pack(flex=0.8))
 
         button = toga.Button(
-            "Create", on_press=self.create_note, 
-            style=Pack(height=140, padding=(0,11,11), font_size=28, color="#EBF6F7", background_color="#27221F"))
-        bottom_box = toga.Box(children=[button], style=Pack(direction=COLUMN, flex=0.21))
+            "Add", on_press=self.add_note, 
+            style=Pack(height=120, padding=11, font_size=24, color="#EBF6F7", background_color="#27221F"))
+        bottom_box = toga.Box(children=[button], style=Pack(direction=COLUMN, flex=0.2))
 
-        note_create_box = toga.Box(
+        note_add_box = toga.Box(
             children=[
                 label, toga.Divider(style=Pack(background_color="#27221F")), 
-                top_box, 
+                top_container, toga.Divider(style=Pack(background_color="#27221F")),
                 bottom_box
             ], 
             style=Pack(direction=COLUMN, background_color="#393432"))
 
-        return note_create_box
+        return note_add_box
 
 
     def get_note_edit_box(self):
@@ -213,7 +217,7 @@ class Journal:
         self.journal_notes_edit_title_input = toga.TextInput(
             id="note_edit_title input 34",
             on_change=length_check, 
-            style=Pack(padding=(0,11), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+            style=Pack(padding=(0,11,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
         
         content_label = toga.Label(
             "Content:", 
@@ -222,27 +226,26 @@ class Journal:
 
         top_box = toga.Box(
             children=[
-                title_label,
-                self.journal_notes_edit_title_input,
-                content_label,
-                self.journal_notes_edit_content_input
+                title_label, self.journal_notes_edit_title_input, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")), 
+                content_label, self.journal_notes_edit_content_input
             ],
-            style=Pack(direction=COLUMN, flex=0.79))
+            style=Pack(direction=COLUMN, flex=0.8))
+        top_container = toga.ScrollContainer(content=top_box, horizontal=False, vertical=False, style=Pack(flex=0.8))
 
-        delete_button = toga.Button(
-            "Delete", on_press=self.delete_note_dialog, 
-            style=Pack(flex=0.5, height=140, padding=(0,4,11,11), font_size=28, color="#EBF6F7", background_color="#27221F"))
+        remove_button = toga.Button(
+            "Remove", on_press=self.remove_note_dialog, 
+            style=Pack(flex=0.5, height=120, padding=(11,4,11,11), font_size=24, color="#EBF6F7", background_color="#27221F"))
         save_button = toga.Button(
             "Save", on_press=self.save_note_dialog, 
-            style=Pack(flex=0.5, height=140, padding=(0,11,11,4), font_size=28, color="#EBF6F7", background_color="#27221F"))
+            style=Pack(flex=0.5, height=120, padding=(11,11,11,4), font_size=24, color="#EBF6F7", background_color="#27221F"))
         bottom_box = toga.Box(
-            children=[delete_button, save_button], 
-            style=Pack(direction=ROW, flex=0.21))
+            children=[remove_button, save_button], 
+            style=Pack(direction=ROW, flex=0.2))
         
         note_edit_box = toga.Box(
             children=[
                 label, toga.Divider(style=Pack(background_color="#27221F")), 
-                top_box, 
+                top_container, toga.Divider(style=Pack(background_color="#27221F")),
                 bottom_box
             ], 
             style=Pack(direction=COLUMN, background_color="#393432"))
@@ -254,7 +257,7 @@ class Journal:
         journal_box = self.get_journal_box()
         entries_box = self.get_entries_box()
         notes_box = self.get_notes_box()
-        note_create_box = self.get_note_create_box()
+        note_add_box = self.get_note_add_box()
         note_edit_box = self.get_note_edit_box()
 
         con, cur = get_connection(self.db_path)
@@ -291,7 +294,7 @@ class Journal:
 
         con.close()
 
-        return journal_box, entries_box, notes_box, note_create_box, note_edit_box
+        return journal_box, entries_box, notes_box, note_add_box, note_edit_box
         
 
     def update_journal(self, notes=False, con_cur=None):
@@ -322,20 +325,20 @@ class Journal:
             if not con_cur:
                 con.close()
 
-            self.journal_data["entries dates"] = defaultdict(lambda: defaultdict(list))
+            self.data["entries dates"] = defaultdict(lambda: defaultdict(list))
             
             for year, month, day in dates:
                 year = int(year)
                 month = int(month)
                 day = int(day)
-                self.journal_data["entries dates"][year][month].append(day)
+                self.data["entries dates"][year][month].append(day)
 
             today = date.today()
             year = today.year
             month = today.month
             day = today.day
-            if day not in self.journal_data["entries dates"][year][month]:
-                self.journal_data["entries dates"][year][month] = [day] + self.journal_data["entries dates"][year][month]
+            if day not in self.data["entries dates"][year][month]:
+                self.data["entries dates"][year][month] = [day] + self.data["entries dates"][year][month]
 
         if notes:
             cur.execute("""
@@ -343,7 +346,7 @@ class Journal:
                 FROM notes
                 ORDER BY last_updated DESC;
             """)
-            self.journal_data["notes"] = cur.fetchall()
+            self.data["notes"] = cur.fetchall()
 
         close_connection(con, con_cur)
                 
@@ -366,17 +369,17 @@ class Journal:
 
     def load_entry(self, widget, con_cur=None):
         if not widget:
-            self.journal_entries_year_select.items = [y for y in sorted(self.journal_data["entries dates"], reverse=True)]
+            self.journal_entries_year_select.items = [y for y in sorted(self.data["entries dates"], reverse=True)]
         else:
             date_type = widget.id.split()[2]
             value = widget.value
 
             if date_type == "year":
-                self.journal_entries_month_select.items = [self.month_num_to_name[m] for m in sorted(self.journal_data["entries dates"][value], reverse=True)]
+                self.journal_entries_month_select.items = [self.month_num_to_name[m] for m in sorted(self.data["entries dates"][value], reverse=True)]
             else:
                 year = self.journal_entries_year_select.value
                 if date_type == "month":
-                    self.journal_entries_day_select.items = self.journal_data["entries dates"][year][self.month_name_to_num[value]]
+                    self.journal_entries_day_select.items = self.data["entries dates"][year][self.month_name_to_num[value]]
                 else:
                     button_box = self.journal_entries_save_box
                     button_box.clear()
@@ -384,13 +387,18 @@ class Journal:
                     month = self.month_name_to_num[self.journal_entries_month_select.value]
                     day = widget.value
                     entry_date = date(year, month, day)
-                    
-                    con, cur = get_connection(self.db_path)
+                    iso = entry_date.isoformat()
+                    if iso not in self.data["entries"]:
+                        con, cur = get_connection(self.db_path, con_cur)
 
-                    cur.execute("SELECT content FROM entries WHERE date = ?;", (entry_date,))
-                    result = cur.fetchone()
-                    
-                    close_connection(con, con_cur)
+                        cur.execute("SELECT content FROM entries WHERE date = ?;", (entry_date,))
+                        result = cur.fetchone()
+                        
+                        close_connection(con, con_cur)
+
+                        if entry_date != date.today():
+                            self.data["entries"][iso] = result
+                    content = self.data["entries"][iso] if entry_date != date.today() else result
 
                     input = self.journal_entries_input
                     if entry_date == date.today():
@@ -399,21 +407,19 @@ class Journal:
                     else:
                         input.readonly = True
 
-                        quotes = [
-                            "“The world changes, and all that once was strong now proves unsure.”", "— Théoden, The Lord of the Rings by J.R.R. Tolkien", 
-                            "“Memories warm you up from the inside. But they also tear you apart.”", "— Haruki Murakami, Kafka on the Shore",
-                            "“The past always seems better when you look back on it than it did at the time.”", "— Robert Jordan, For Whom the Bell Tolls by Ernest Hemingway",
-                            "“No matter how much suffering you went through, you never wanted to let go of those\nmemories.”", "— Toru Watanabe, Norwegian Wood by Haruki Murakami"
-                        ]
-                        for i in range(0, len(quotes)-1, 2):
-                            button_box.add(toga.Label(quotes[i], style=Pack(padding=(4,4,0), font_size=7, color="#EBF6F7")))
-                            button_box.add(
-                                toga.Label(quotes[i+1], 
-                                style=Pack(padding=(0,4,4), text_align="right", font_size=7, font_style="italic", color="#EBF6F7")))
+                        if "entry quote" not in self.widgets:
+                            quotes = self.data["entry quotes"]
+                            box = toga.Box(style=Pack(direction=COLUMN))
+                            for i in range(0, len(quotes)-1, 2):
+                                box.add(toga.Label(quotes[i], style=Pack(padding=(4,4,0), font_size=7, color="#EBF6F7")))
+                                box.add(
+                                    toga.Label(quotes[i+1], 
+                                    style=Pack(padding=(0,4,4), text_align="right", font_size=7, font_style="italic", color="#EBF6F7")))
+                            self.widgets["entry quote"] = box
+                        button_box.add(self.widgets["entry quote"])
                     
-                    if result:
-                        content = result[0]
-                        input.value = content
+                    if content:
+                        input.value = content[0]
                     else:
                         input.value = ""
 
@@ -421,7 +427,7 @@ class Journal:
     async def save_entry_dialog(self, widget):
         content = self.journal_entries_input.value
         if content:
-            result = await self.app.main_window.question_dialog("Confirmation", "Art thou certain thou wishest to save the entry?")
+            result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Art thou certain thou wishest to save the entry?"))
             if result:
                 await self.save_entry(content)
 
@@ -452,13 +458,13 @@ class Journal:
 
         note_box = self.journal_notes_list_box
         note_box.clear()
-        data = self.journal_data["notes"]
+        data = self.data["notes"]
         if not data:
                 note_box.add(toga.Label(
-                    "Created notes will appear here.",
+                    "Added notes will appear here.",
                     style=Pack(padding=10, font_size=12, color="#EBF6F7")))
         else:
-            for n in self.journal_data["notes"]:
+            for n in self.data["notes"]:
                 b_id = f"{n[0]} note button"
                 if b_id not in self.widgets:
                     self.widgets[b_id] = toga.Button(
@@ -472,9 +478,9 @@ class Journal:
                     toga.Divider(style=Pack(background_color="#27221F")))    
                 
 
-    def create_note(self, widget):
-        title = self.journal_notes_create_title_input.value.strip()
-        content = self.journal_notes_create_content_input.value 
+    def add_note(self, widget):
+        title = self.journal_notes_add_title_input.value.strip()
+        content = self.journal_notes_add_content_input.value 
         
         if title and content:
             con, cur = get_connection(self.db_path)
@@ -497,33 +503,39 @@ class Journal:
         content = self.journal_notes_edit_content_input.value
 
         if content and title:
-            result = await self.app.main_window.question_dialog("Confirmation", "Art thou certain thou wishest to save the note?")
+            result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Art thou certain thou wishest to save the note?"))
             if result:
                 await self.save_note(title, content)
 
 
     async def save_note(self, title, content):
+        id = self.temp_note_id
+
         con, cur = get_connection(self.db_path)
 
         cur.execute("""
             UPDATE notes
             SET title = ?, content = ?
             WHERE id = ?;
-        """, (title, content, self.temp_note_id,))
+        """, (title, content, id,))
         con.commit()
+
+        button_id = f"{id} note button"
+        if button_id in self.widgets:
+            del self.widgets[button_id]
 
         self.load_notes(con_cur=(con, cur))
     
         con.close()
 
 
-    async def delete_note_dialog(self, widget):
-        result = await self.app.main_window.question_dialog("Confirmation", "Art thou certain thou wishest to delete the note?")
+    async def remove_note_dialog(self, widget):
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Art thou certain thou wishest to remove the note?"))
         if result:
-            await self.delete_note()
+            await self.remove_note()
 
 
-    async def delete_note(self):
+    async def remove_note(self):
         con, cur = get_connection(self.db_path)
 
         cur.execute("""
@@ -531,6 +543,10 @@ class Journal:
             WHERE id = ?;
         """, (self.temp_note_id,))
         con.commit()
+
+        button_id = f"{id} note button"
+        if button_id in self.widgets:
+            del self.widgets[button_id]
 
         self.load_notes(con_cur=(con, cur))
 
@@ -540,7 +556,7 @@ class Journal:
 
 
     async def reset_journal_dialog(self, widget):
-        result = await self.app.main_window.question_dialog("Confirmation", "Are you sure you wish to reset Journal database?")
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you wish to reset Journal database?"))
         if result:
             await self.reset_journal()
 
@@ -579,17 +595,16 @@ class Journal:
             END;
         """)
         con.commit()
-
-        self.update_journal(True, (con, cur))
-
         con.close()
 
-        await self.app.main_window.info_dialog("Success", "Journal database was successfully reset.")
+        self.app.setup_ui(journal=True)
+
+        await self.app.dialog(toga.InfoDialog("Success", "Journal database was successfully reset."))
 
 
-    def clear_note_create_box(self):
-        self.journal_notes_create_title_input.value = ""
-        self.journal_notes_create_content_input.value = ""
+    def clear_note_add_box(self):
+        self.journal_notes_add_title_input.value = ""
+        self.journal_notes_add_content_input.value = ""
 
     
     def load_edit_note_box(self, id):
