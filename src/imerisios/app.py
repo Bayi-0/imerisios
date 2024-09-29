@@ -334,7 +334,7 @@ class Imerisios(toga.App):
     def open_journal_notes(self, widget):
         self.setup_ui(journal=self.setup_journal)
 
-        self.rankings.journal_notes_list_container.position = toga.Position(0,0)
+        self.journal.journal_notes_list_container.position = toga.Position(0,0)
         self.main_window.content = self.journal_notes_box
 
         self.build_toolbar([(self.menu_command, True), (self.journal_command, True), (self.add_note_command, True)])

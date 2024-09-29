@@ -1008,7 +1008,7 @@ class Habits:
             if button_id not in self.widgets["habits"]:
                 self.widgets["habits"][button_id] = toga.Button(
                     "More", id=button_id, on_press=self.app.open_habit_more, 
-                    style=Pack(flex=0.14, height=80, font_size=12, color="#EBF6F7", background_color="#27221F"))
+                    style=Pack(flex=0.14, height=84, font_size=12, color="#EBF6F7", background_color="#27221F"))
             button = self.widgets["habits"][button_id]
 
             tracked = "No" if habit[2] else "Yes"
