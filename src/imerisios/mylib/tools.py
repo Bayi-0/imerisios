@@ -79,3 +79,22 @@ def get_month_dicts():
     month_name_to_num = {name: num for num, name in month_num_to_name.items()}
 
     return month_num_to_name, month_name_to_num
+
+
+def get_ranges(items):
+        ranges = []
+        items_number = len(items)
+        chunk_size = 40
+
+        start = 1
+        if items_number == 0:
+            ranges = [(0, 0)]
+        while items_number > 0:
+            end = start + min(items_number, chunk_size) - 1
+            ranges.append([start, end])
+            items_number -= chunk_size
+            start = end + 1
+        
+        items = ['–'.join([str(i) for i in r]) for r in ranges]
+
+        return items

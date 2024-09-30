@@ -2,7 +2,7 @@ import toga
 from toga.style import Pack
 from toga.constants import COLUMN, ROW
 import sqlite3 as sql
-from imerisios.mylib.tools import length_check, get_connection, close_connection
+from imerisios.mylib.tools import length_check, get_connection, close_connection, get_ranges
 from datetime import date
 from titlecase import titlecase
 from nameparser import HumanName
@@ -889,7 +889,7 @@ class Rankings:
 
             for t in self.ranking_types:
                 data = self.data["rankings"][t]
-                items = self.get_ranges(data)
+                items = get_ranges(data)
                 self.widgets[f"{t} range"].items = items
 
         else:  
@@ -919,7 +919,7 @@ class Rankings:
             elif widget_id[0] == "sort":
                 t = self.data["load type"]
                 self.ranking_get_data({t:(self.data["load sorting"][t], self.data["load filtering"][t])})
-                items = self.get_ranges(self.data["rankings"][t])
+                items = get_ranges(self.data["rankings"][t])
                 self.widgets[f"{t} range"].items = items
 
             elif widget_id[0] == "search":
@@ -1070,7 +1070,7 @@ class Rankings:
 
         con.close()
 
-        items = self.get_ranges(self.data["rankings"][t])
+        items = get_ranges(self.data["rankings"][t])
         self.widgets[f"{t} range"].items = items
 
         self.app.open_ranking(widget=None, tab=t.capitalize())
@@ -1102,7 +1102,7 @@ class Rankings:
         if id in self.widgets["entries"][t]:
             del self.widgets["entries"][t][id]
 
-        items = self.get_ranges(self.data["rankings"][t])
+        items = get_ranges(self.data["rankings"][t])
         self.widgets[f"{t} range"].items = items
 
         self.app.open_ranking(widget=None, tab=t.capitalize())
@@ -1188,7 +1188,7 @@ class Rankings:
         if id in self.widgets["entries"][t]:
             del self.widgets["entries"][t][id]
 
-        items = self.get_ranges(self.data["rankings"][t])
+        items = get_ranges(self.data["rankings"][t])
         self.widgets[f"{t} range"].items = items
 
         self.app.open_ranking(widget=None, tab=t.capitalize())
@@ -1379,25 +1379,6 @@ class Rankings:
         entry_box = toga.Box(children=children, style=Pack(direction=COLUMN))
         
         return entry_box
-    
-
-    def get_ranges(self, entries):
-        ranges = []
-        entries_number = len(entries)
-        chunk_size = 40
-
-        start = 1
-        if entries_number == 0:
-            ranges = [(0, 0)]
-        while entries_number > 0:
-            end = start + min(entries_number, chunk_size) - 1
-            ranges.append([start, end])
-            entries_number -= chunk_size
-            start = end + 1
-        
-        items = ['–'.join([str(i) for i in r]) for r in ranges]
-
-        return items
     
 
     def check_sort_inputs(self, widget):

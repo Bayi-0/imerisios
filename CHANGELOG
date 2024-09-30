@@ -123,3 +123,18 @@
 
 ### Removed
 - N/A
+
+
+## [v2.1.0] - 2024-09-30
+
+### Added
+- Ranges for task history.
+
+### Changed
+- Done button turned into done and edit buttons for tasks.
+
+### Fixed
+- Fixed day_change.
+
+### Removed
+- N/A

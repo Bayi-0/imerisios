@@ -10,6 +10,7 @@ import shutil
 import threading
 import time
 import schedule
+import asyncio
 from imerisios.mylib.coin import CoinFlip
 from imerisios.mylib.todo import ToDo
 from imerisios.mylib.habit import Habits
@@ -87,7 +88,7 @@ class Imerisios(toga.App):
         self.main_window.show()
 
         # scheduler 
-        schedule.every().minute.do(self.day_change)
+        schedule.every().minute.do(self.day_change_sync_wrapper)
         
         scheduler_thread = threading.Thread(target=self.run_scheduler)
         scheduler_thread.daemon = True
@@ -215,6 +216,10 @@ class Imerisios(toga.App):
 
             await self.app.dialog(toga.InfoDialog("Day Change", "Everything related to day change has been updated successfully. You may need to relaunch the app."))
             
+    
+    def day_change_sync_wrapper(self):
+        asyncio.run(self.day_change())
+
 
     def run_scheduler(self):
         while True:

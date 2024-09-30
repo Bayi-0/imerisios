@@ -3,7 +3,7 @@ from toga.style import Pack
 from toga.constants import COLUMN, ROW, Direction
 from datetime import date, timedelta
 import sqlite3 as sql
-from imerisios.mylib.tools import length_check, get_connection, close_connection
+from imerisios.mylib.tools import length_check, get_connection, close_connection, get_ranges
 
 class ToDo:
     def __init__(self, app, db_path):
@@ -171,6 +171,7 @@ class ToDo:
         return edit_box
 
     def get_list_box(self):
+        # daily box
         daily_label = toga.Label(
             "To-Do List", 
             style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
@@ -190,7 +191,7 @@ class ToDo:
             ],
             style=Pack(direction=COLUMN, background_color="#393432"))
         
-        ### weekly box
+        # weekly box
         weekly_label = toga.Label(
             "To-Do List", 
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
@@ -210,7 +211,7 @@ class ToDo:
             ],
             style=Pack(direction=COLUMN, background_color="#393432"))
         
-        ### monthly box
+        # monthly box
         monthly_label = toga.Label(
             "To-Do List", 
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
@@ -230,7 +231,7 @@ class ToDo:
             ],
             style=Pack(direction=COLUMN, background_color="#393432"))
         
-        ### yearly box
+        # yearly box
         yearly_label = toga.Label(
             "To-Do List", 
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
@@ -250,7 +251,7 @@ class ToDo:
             ],
             style=Pack(direction=COLUMN, background_color="#393432"))
         
-        ## pending task boxes container 
+        # pending task boxes container 
         daily_icon = toga.Icon("resources/todo/daily.png")
         weekly_icon = toga.Icon("resources/todo/weekly.png")
         monthly_icon = toga.Icon("resources/todo/monthly.png")
@@ -265,12 +266,32 @@ class ToDo:
         return list_box
 
     def get_history_box(self):
+        # routine box
         routine_label = toga.Label(
             "To-Do History", 
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
         
         routine_count_box = toga.Box(id="routine count box", style=Pack(direction=ROW))
         self.widgets["routine count box"] = routine_count_box
+
+        back_button = toga.Button(
+            "<", id="routine back button",
+            on_press=self.change_range, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
+        next_button = toga.Button(
+            ">", id="routine next button",
+            on_press=self.change_range, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
+        self.routine_range = toga.Selection(
+            id="routine range", 
+            on_change=self.load_tasks,
+            style=Pack(flex=0.6, padding=4, height=44))
+        self.widgets["routine range"] = self.routine_range
+        routine_range_box = toga.Box(
+            children=[back_button, self.routine_range, next_button],
+            style=Pack(direction=ROW))
 
         routine_task_box = toga.Box(id="routine task box", style=Pack(direction=COLUMN))
         self.widgets["routine task box"] = routine_task_box
@@ -280,11 +301,12 @@ class ToDo:
             children=[
                 routine_label, toga.Divider(style=Pack(background_color="#27221F")), 
                 routine_count_box, toga.Divider(style=Pack(background_color="#27221F")), 
+                routine_range_box, toga.Divider(style=Pack(background_color="#27221F")),
                 routine_task_container
             ],
             style=Pack(direction=COLUMN, background_color="#393432"))
         
-        ### challenging box
+        # challenging box
         challenging_label = toga.Label(
             "To-Do History", 
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
@@ -292,15 +314,38 @@ class ToDo:
         challenging_count_box = toga.Box(id="challenging count box", style=Pack(direction=ROW))
         self.widgets["challenging count box"] = challenging_count_box
 
+        back_button = toga.Button(
+            "<", id="challenging back button",
+            on_press=self.change_range, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
+        next_button = toga.Button(
+            ">", id="challenging next button",
+            on_press=self.change_range, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
+        self.challenging_range = toga.Selection(
+            id="challenging range", 
+            on_change=self.load_tasks,
+            style=Pack(flex=0.6, padding=4, height=44))
+        self.widgets["challenging range"] = self.challenging_range
+        challenging_range_box = toga.Box(
+            children=[back_button, self.challenging_range, next_button],
+            style=Pack(direction=ROW))
+
         challenging_task_box = toga.Box(id="challenging task box", style=Pack(direction=COLUMN))
         self.widgets["challenging task box"] = challenging_task_box
         challenging_task_container = toga.ScrollContainer(content=challenging_task_box, horizontal=False, style=Pack(flex=0.9))
         
         challenging_box = toga.Box(
-            children=[challenging_label, toga.Divider(style=Pack(background_color="#27221F")), challenging_count_box, toga.Divider(style=Pack(background_color="#27221F")), challenging_task_container],
+            children=[
+                challenging_label, toga.Divider(style=Pack(background_color="#27221F")), 
+                challenging_count_box, toga.Divider(style=Pack(background_color="#27221F")), 
+                challenging_range_box, toga.Divider(style=Pack(background_color="#27221F")), 
+                challenging_task_container],
             style=Pack(direction=COLUMN, background_color="#393432"))
         
-        ### significant box
+        # significant box
         significant_label = toga.Label(
             "To-Do History", 
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
@@ -308,31 +353,77 @@ class ToDo:
         significant_count_box = toga.Box(id="significant count box", style=Pack(direction=ROW))
         self.widgets["significant count box"] = significant_count_box
 
+        back_button = toga.Button(
+            "<", id="significant back button",
+            on_press=self.change_range, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
+        next_button = toga.Button(
+            ">", id="significant next button",
+            on_press=self.change_range, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
+        self.significant_range = toga.Selection(
+            id="significant range", 
+            on_change=self.load_tasks,
+            style=Pack(flex=0.6, padding=4, height=44))
+        self.widgets["significant range"] = self.significant_range
+        significant_range_box = toga.Box(
+            children=[back_button, self.significant_range, next_button],
+            style=Pack(direction=ROW))
+
         significant_task_box = toga.Box(id="significant task box", style=Pack(direction=COLUMN))
         self.widgets["significant task box"] = significant_task_box
         significant_task_container = toga.ScrollContainer(content=significant_task_box, horizontal=False, style=Pack(flex=0.9))
 
         significant_box = toga.Box(
-            children=[significant_label, toga.Divider(style=Pack(background_color="#27221F")), significant_count_box, toga.Divider(style=Pack(background_color="#27221F")), significant_task_container],
+            children=[
+                significant_label, toga.Divider(style=Pack(background_color="#27221F")), 
+                significant_count_box, toga.Divider(style=Pack(background_color="#27221F")),
+                significant_range_box, toga.Divider(style=Pack(background_color="#27221F")), 
+                significant_task_container],
             style=Pack(direction=COLUMN, background_color="#393432"))
         
-        ### momentous box
+        # momentous box
         momentous_label = toga.Label(
             "To-Do History", 
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
         
         momentous_count_box = toga.Box(id="momentous count box", style=Pack(direction=ROW))
         self.widgets["momentous count box"] = momentous_count_box
-        
+
+        back_button = toga.Button(
+            "<", id="momentous back button",
+            on_press=self.change_range, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
+        next_button = toga.Button(
+            ">", id="momentous next button",
+            on_press=self.change_range, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
+        self.momentous_range = toga.Selection(
+            id="momentous range", 
+            on_change=self.load_tasks,
+            style=Pack(flex=0.6, padding=4, height=44))
+        self.widgets["momentous range"] = self.momentous_range
+        momentous_range_box = toga.Box(
+            children=[back_button, self.momentous_range, next_button],
+            style=Pack(direction=ROW))
+
         momentous_task_box = toga.Box(id="momentous task box", style=Pack(direction=COLUMN))
         self.widgets["momentous task box"] = momentous_task_box
         momentous_task_container = toga.ScrollContainer(content=momentous_task_box, horizontal=False, style=Pack(flex=0.9))
 
         momentous_box = toga.Box(
-            children=[momentous_label, toga.Divider(style=Pack(background_color="#27221F")), momentous_count_box, toga.Divider(style=Pack(background_color="#27221F")), momentous_task_container],
+            children=[
+                momentous_label, toga.Divider(style=Pack(background_color="#27221F")), 
+                momentous_count_box, toga.Divider(style=Pack(background_color="#27221F")),
+                momentous_range_box, toga.Divider(style=Pack(background_color="#27221F")), 
+                momentous_task_container],
             style=Pack(direction=COLUMN, background_color="#393432"))
         
-        ## completed task boxes container
+        # completed task boxes container
         routine_icon = toga.Icon("resources/todo/routine.png")
         challenging_icon = toga.Icon("resources/todo/challenging.png")
         significant_icon = toga.Icon("resources/todo/significant.png")
@@ -464,21 +555,16 @@ class ToDo:
             self.app.open_todo(widget, task_type.capitalize())
 
 
-    async def interact_task(self, widget):
+    async def done_task_dialog(self, widget):
         self.temp_task_id = int(widget.id.split()[0])
         result = await self.app.dialog(toga.QuestionDialog("Confirmation", f"Hast thou completed Task [{self.temp_task_id:06d}] bestowed upon thee?"))
-        await self.done_task_dialog(result)
-
-
-    async def done_task_dialog(self, result):
         if result:
             await self.done_task()
-        else:
-            result = await self.app.dialog(toga.QuestionDialog("Edit", "Dost thou wish to amend the task?"))
-            await self.edit_task_dialog(result)
 
 
-    async def edit_task_dialog(self, result):
+    async def edit_task_dialog(self, widget):
+        self.temp_task_id = int(widget.id.split()[0])
+        result = await self.app.dialog(toga.QuestionDialog("Edit", "Dost thou wish to amend the task?"))
         if result:
             await self.app.open_edit_task()
 
@@ -570,7 +656,7 @@ class ToDo:
         self.app.open_todo(None, tab=task_type.capitalize())
 
 
-    def load_tasks(self, types: list=[], tiers: list=[], con_cur=None):
+    def load_tasks(self, widget=None, types: list=[], tiers: list=[], con_cur=None):
         self.todo_get_data(types, tiers, con_cur)
 
         for t in types:
@@ -601,29 +687,43 @@ class ToDo:
         if tiers:
             self.task_history_load.clear()
             for t in tiers:
-                count_box = self.widgets[f"{t} count box"]
-                list_box = self.widgets[f"{t} task box"]
-                count_box.clear()
-                list_box.clear()
-
                 data = self.data[t]
+                items = get_ranges(data[0])
+                self.widgets[f"{t} range"].items = items
+
+                count_box = self.widgets[f"{t} count box"]
+                count_box.clear()
+
+                if f"{t} task label" not in self.widgets:
+                    self.widgets[f"{t} task label"] = toga.Label(f"{t.capitalize()} tasks", style=Pack(flex=0.49, padding=10, font_size=16, color="#EBF6F7"))
 
                 count_box.add(
-                    toga.Label(f"{t.capitalize()} tasks", style=Pack(flex=0.49, padding=10, font_size=16, color="#EBF6F7")),
+                    self.widgets[f"{t} task label"],
                     toga.Divider(direction=Direction.VERTICAL, style=Pack(height=49, background_color="#27221F")),
                     toga.Label(f"Completed: {data[1]}", style=Pack(flex=0.51, padding=10, font_size=16, color="#EBF6F7")))
 
-                if len(data[0]) == 0:
-                    list_box.add(toga.Label(
+        elif widget:
+            widget_id = widget.id.split()
+
+            t = widget_id[0]
+            data = self.data[t][0]
+            list_box = self.widgets[f"{t} task box"]
+            list_box.clear()
+
+            start, end = [int(i) for i in widget.value.split('–')]
+            if start == 0 and end == 0:
+                list_box.add(
+                    toga.Label(
                         "Completed tasks of the tier will appear here.",
                         style=Pack(padding=10, font_size=12, color="#EBF6F7")))
-                else:
-                    for task in data[0]:
-                        id = task[0]
-                        if id not in self.widgets["tasks"]:
-                            task_box = self.get_task_box(task, button=False)
-                            self.widgets["tasks"][id] = task_box
-                        list_box.add(self.widgets["tasks"][id])
+            else:
+                for i in range(start-1, end):
+                    task = data[i]
+                    id = task[0]
+                    if id not in self.widgets["tasks"]:
+                        task_box = self.get_task_box(task, button=False)
+                        self.widgets["tasks"][id] = task_box
+                    list_box.add(self.widgets["tasks"][id])
 
 
     def update_task_types(self, load=True, con_cur=None):
@@ -763,9 +863,15 @@ class ToDo:
 
         if button:
             if f"{id} task button" not in self.widgets["tasks"]:
-                self.widgets["tasks"][f"{task[0]} task button"] = toga.Button(
-                    "Done", id=f"{task[0]} task button", on_press=self.interact_task, 
-                    style=Pack(padding=4, height=110, width=84, font_size=12, color="#EBF6F7", background_color="#27221F"))
+                done = toga.Button(
+                    "Done", id=f"{task[0]} task done button", on_press=self.done_task_dialog, 
+                    style=Pack(flex=0.5, height=55, font_size=12, color="#EBF6F7", background_color="#27221F"))
+                edit = toga.Button(
+                    "Edit", id=f"{task[0]} task edit button", on_press=self.edit_task_dialog, 
+                    style=Pack(flex=0.5, height=55, font_size=12, color="#EBF6F7", background_color="#27221F"))
+                self.widgets["tasks"][f"{task[0]} task button"] = toga.Box(
+                    children=[done, edit],
+                    style=Pack(direction=COLUMN, padding=4, height=110, width=84))
                 
             bottom_str = f"Tier: {task[2].capitalize()} | Urgency: {task[3].capitalize()}\nAdded: {task[4]} | Due: {task[5]}"
         else:
@@ -821,3 +927,17 @@ class ToDo:
         
         else:
             return task, ""
+        
+
+    def change_range(self, widget):
+        t, button, _ = widget.id.split()
+        w = self.widgets[f"{t} range"]
+        value = w.value
+        obj = w.items.find(value)
+        idx = w.items.index(obj)
+        if button == "back":
+            if idx != 0:
+                w.value = w.items[idx-1].value
+        elif button == "next":
+            if len(w.items) != idx+1:
+                w.value = w.items[idx+1].value
