@@ -138,3 +138,20 @@
 
 ### Removed
 - N/A
+
+
+## [v2.1.1] - 2024-10-03
+
+### Added
+- N/A
+
+### Changed
+- N/A
+
+### Fixed
+- Tags formatting keeps separate tags in uppercase unchanged;
+- Solved the problem with sort tag input not being cleared;
+- Turned semi-dividers into full dividers in filter section due to the padding not working properly.
+
+### Removed
+- N/A

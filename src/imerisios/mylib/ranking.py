@@ -465,9 +465,9 @@ class Rankings:
             "music": ["—", "Grade", "Artist", "Added Date"]}
         self.data["sorting"] = {t:[("—", "Asc") for _ in range(3)] for t in self.ranking_types}
         self.data["filtering"] = {
-            t:{"grade": ("E", "S"), "person": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), date.today())}
+            t:{"grade": ("E", "S"), "person": "", "tags": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), date.today())}
             for t in self.ranking_types if t != "music"}
-        self.data["filtering"]["music"] = {"grade": ("E", "S"), "added_date": [date(year=2024, month=7, day=25), date.today()]}
+        self.data["filtering"]["music"] = {"grade": ("E", "S"), "tags": "", "added_date": [date(year=2024, month=7, day=25), date.today()]}
         self.data["load sorting"] = {t:[] for t in self.ranking_types}
         self.data["load filtering"] = {t:[] for t in self.ranking_types}
         
@@ -615,7 +615,7 @@ class Rankings:
 
         ## filter load lists
         full_divider = toga.Divider(style=Pack(background_color="#27221F"))
-        small_dividers = [toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")) for i in range(5)]
+        small_dividers = [toga.Divider(style=Pack(background_color="#27221F")) for _ in range(5)]
         self.filters = {}
         for t in self.ranking_types:
             if t != "music":
@@ -1042,7 +1042,7 @@ class Rankings:
                 person[i] = str(person[i])
             person = ", ".join(sorted(person))
         
-        tags = self.add_tags.value.lower().split(",")
+        tags = self.add_tags.value.split(",")
         tags = sorted([t.strip() for t in tags])
         tags = titlecase(", ".join(tags))
 
@@ -1155,7 +1155,7 @@ class Rankings:
                 person[i] = str(person[i])
             person = ", ".join(sorted(person))
         
-        tags = self.edit_tags.value.lower().split(",")
+        tags = self.edit_tags.value.split(",")
         tags = sorted([t.strip() for t in tags])
         tags = titlecase(", ".join(tags))
 
