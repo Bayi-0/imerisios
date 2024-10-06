@@ -1042,13 +1042,18 @@ class Rankings:
                 person[i] = str(person[i])
             person = ", ".join(sorted(person))
         
-        tags = self.add_tags.value.split(",")
-        tags = sorted([t.strip() for t in tags])
-        tags = titlecase(", ".join(tags))
+        tags = self.get_tags(self.add_tags.value)
 
         grade = self.grade_to_int[self.add_grade.value]
 
         if t != "music":
+            check_query = f"""
+                SELECT id FROM {t}_entries 
+                WHERE LOWER(title) = LOWER(?)
+            """
+            check_value = title
+            error_str = "title"
+
             years = [int(y) if y else None for y in (start_year, end_year)]
             query = f"""
                 INSERT INTO {t}_entries (title, {self.type_to_person[t]}, start_year, end_year, tags, grade)
@@ -1056,6 +1061,13 @@ class Rankings:
             """
             values = (title, person, years[0], years[1], tags, grade)
         else:
+            check_query = f"""
+                SELECT id FROM music_entries 
+                WHERE LOWER(artist) = LOWER(?)
+            """
+            check_value = person
+            error_str = "artist"
+
             query = """
                 INSERT INTO music_entries (artist, tags, grade)
                 VALUES (?, ?, ?);
@@ -1063,6 +1075,14 @@ class Rankings:
             values = (person, tags, grade)
         
         con, cur = get_connection(self.db_path)
+
+        cur.execute(check_query, (check_value,))
+        if (check_id := cur.fetchone()):
+            error_msg = f"[{check_id[0]:06d}] entry already uses the " + error_str + "."
+            await self.app.dialog(toga.InfoDialog("Error", error_msg))
+            con.close()
+            return 0
+        
         cur.execute(query, values)
         con.commit()
 
@@ -1155,13 +1175,18 @@ class Rankings:
                 person[i] = str(person[i])
             person = ", ".join(sorted(person))
         
-        tags = self.edit_tags.value.split(",")
-        tags = sorted([t.strip() for t in tags])
-        tags = titlecase(", ".join(tags))
+        tags = self.get_tags(self.edit_tags.value)
 
         grade = self.grade_to_int[self.edit_grade.value]
 
         if t != "music":
+            check_query = f"""
+                SELECT id FROM {t}_entries 
+                WHERE LOWER(title) = LOWER(?)
+            """
+            check_value = title
+            error_str = "title"
+
             years = [int(y) if y else None for y in (start_year, end_year)]
             query = f"""
                 UPDATE {t}_entries
@@ -1170,6 +1195,13 @@ class Rankings:
             """
             values = (title, person, years[0], years[1], tags, grade, id)
         else:
+            check_query = f"""
+                SELECT id FROM music_entries 
+                WHERE LOWER(artist) = LOWER(?)
+            """
+            check_value = person
+            error_str = "artist"
+
             query = """
                 UPDATE music_entries
                 SET artist = ?, tags = ?, grade = ?
@@ -1178,6 +1210,15 @@ class Rankings:
             values = (person, tags, grade, id)
         
         con, cur = get_connection(self.db_path)
+
+        cur.execute(check_query, (check_value,))
+        if (check_id := cur.fetchone()):
+            if check_id[0] != id:
+                error_msg = f"[{check_id[0]:06d}] entry already uses the " + error_str + "."
+                await self.app.dialog(toga.InfoDialog("Error", error_msg))
+                con.close()
+                return 0
+        
         cur.execute(query, values)
         con.commit()
         
@@ -1572,3 +1613,18 @@ class Rankings:
         self.app.setup_ui(rankings=True)
 
         await self.app.dialog(toga.InfoDialog("Success", "Rankings database was successfully reset."))
+
+    
+    def get_tags(self, value):
+        values = value.split(",")
+        added = set()
+        tags = set()
+
+        for tag in values:
+            t = tag.strip()
+            if t.lower() not in added:
+                added.add(t.lower())
+                tags.add(t)
+
+        tags = titlecase(", ".join(sorted(tags)))
+        return tags

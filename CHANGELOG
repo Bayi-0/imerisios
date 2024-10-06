@@ -155,3 +155,19 @@
 
 ### Removed
 - N/A
+
+
+## [v2.1.1] - 2024-10-03
+
+### Added
+- N/A
+
+### Changed
+- N/A
+
+### Fixed
+- Only unique tags are now kept for ranking entries;
+- Rankings cannot have same title/artist now.
+
+### Removed
+- N/A
