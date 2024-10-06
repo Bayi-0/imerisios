@@ -1628,5 +1628,7 @@ class Rankings:
                 added.add(t.lower())
                 tags.append(t)
 
-        tags = titlecase(", ".join(sorted(tags)))
+        tags = titlecase(", ".join(tags))
+        tags = titlecase(", ".join(sorted(tags.split(", "))))
+        
         return tags
