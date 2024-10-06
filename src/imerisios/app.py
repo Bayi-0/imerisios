@@ -372,6 +372,8 @@ class Imerisios(toga.App):
             tab = self.rankings.add_type.value 
         elif self.main_window.content == self.ranking_edit_box:
             tab = self.rankings.edit_type.value    
+        elif self.main_window.content == self.ranking_sort_box:
+            tab = self.rankings.sort_type.value    
             
         self.ranking_box.current_tab = tab
         self.main_window.content = self.ranking_box

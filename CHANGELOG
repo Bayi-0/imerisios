@@ -157,20 +157,19 @@
 - N/A
 
 
-## [v2.1.2] - 2024-10-06
+## [v2.2.0] - 2024-10-06
 
 ### Added
-- N/A
+- Stars column in rankings.
 
 ### Changed
-- N/A
-
-### Fixed
 - Only unique tags are now kept for ranking entries;
 - Rankings cannot have same title/artist now;
 - Adjusted character numbers for formatting in rankings;
 - Adjusted button paddings in ranking edit;
 - Made ranking tabs open on previously chosen tab/type;
+
+### Fixed
 - Solved the problem with first word ("the" etc.) not being capitalized when autoformatting for artists in rankings;
 - Fixed tag sorting in rankings;
 - Fixed search without input.

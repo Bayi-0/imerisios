@@ -267,6 +267,15 @@ class Rankings:
         self.add_person = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
         self.widgets["add person"] = self.add_person
 
+        ## stars
+        stars_label = toga.Label(
+            "Stars:", 
+            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
+        self.widgets["add stars label"] = stars_label
+        
+        self.add_stars = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+        self.widgets["add stars"] = self.add_stars
+
         ## years
         start_year_label = toga.Label(
             "Start Year:", 
@@ -389,6 +398,15 @@ class Rankings:
         self.edit_person = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
         self.widgets["edit person"] = self.edit_person
 
+        ## stars
+        stars_label = toga.Label(
+            "Stars:", 
+            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
+        self.widgets["edit stars label"] = stars_label
+        
+        self.edit_stars = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+        self.widgets["edit stars"] = self.edit_stars
+
         ## years
         start_year_label = toga.Label(
             "Start Year:", 
@@ -465,8 +483,9 @@ class Rankings:
             "music": ["—", "Grade", "Artist", "Added Date"]}
         self.data["sorting"] = {t:[("—", "Asc") for _ in range(3)] for t in self.ranking_types}
         self.data["filtering"] = {
-            t:{"grade": ("E", "S"), "person": "", "tags": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), date.today())}
-            for t in self.ranking_types if t != "music"}
+            t:{"grade": ("E", "S"), "person": "", "stars": "", "tags": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), date.today())}
+            for t in self.ranking_types if t != "music" and t != "book"}
+        self.data["filtering"]["book"] = {"grade": ("E", "S"), "person": "", "tags": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), date.today())}
         self.data["filtering"]["music"] = {"grade": ("E", "S"), "tags": "", "added_date": [date(year=2024, month=7, day=25), date.today()]}
         self.data["load sorting"] = {t:[] for t in self.ranking_types}
         self.data["load filtering"] = {t:[] for t in self.ranking_types}
@@ -565,6 +584,15 @@ class Rankings:
         self.sort_person = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
         self.widgets["sort person"] = self.sort_person
 
+        ## stars
+        stars_label = toga.Label(
+            "Stars:", 
+            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
+        self.widgets["sort stars label"] = stars_label
+        
+        self.sort_stars = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+        self.widgets["sort stars"] = self.sort_stars
+
         ## tags
         tags_label = toga.Label(
             "Tags:", 
@@ -614,26 +642,27 @@ class Rankings:
         self.filter_box = toga.Box(style=Pack(direction=COLUMN))
 
         ## filter load lists
-        full_divider = toga.Divider(style=Pack(background_color="#27221F"))
-        small_dividers = [toga.Divider(style=Pack(background_color="#27221F")) for _ in range(5)]
+        dividers = [toga.Divider(style=Pack(background_color="#27221F")) for _ in range(7)]
         self.filters = {}
         for t in self.ranking_types:
             if t != "music":
                 self.filters[t] = [
-                    filter_label, full_divider,
-                    grade_label, grade_box, small_dividers[0],
-                    self.widgets[f"sort {t}_person label"], self.sort_person, small_dividers[1],
-                    tags_label, self.sort_tags, small_dividers[2],
-                    start_year_label, start_year_box, small_dividers[3],
-                    added_date_label, added_date_box, small_dividers[4], 
+                    filter_label, dividers[0],
+                    grade_label, grade_box, dividers[1],
+                    self.widgets[f"sort {t}_person label"], self.sort_person, dividers[2]]
+                self.filters[t] += [stars_label, self.sort_stars, dividers[6]] if t != "book" else []
+                self.filters[t] += [
+                    tags_label, self.sort_tags, dividers[3],
+                    start_year_label, start_year_box, dividers[4],
+                    added_date_label, added_date_box, dividers[5], 
                     filter_reset_button
                 ]
             else:
                 self.filters[t] = [
-                    filter_label, full_divider,
-                    grade_label, grade_box, small_dividers[0],
-                    tags_label, self.sort_tags, small_dividers[1],
-                    added_date_label, added_date_box, small_dividers[2], 
+                    filter_label, dividers[0],
+                    grade_label, grade_box, dividers[1],
+                    tags_label, self.sort_tags, dividers[2],
+                    added_date_label, added_date_box, dividers[3], 
                     filter_reset_button
                 ]
         
@@ -719,44 +748,46 @@ class Rankings:
         con, cur = get_connection(self.db_path)
         cur.executescript("""
             CREATE TABLE IF NOT EXISTS book_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            added_date DATE DEFAULT (date('now', 'localtime')),
-            title TEXT NOT NULL,
-            author TEXT,
-            start_year INTEGER,
-            end_year INTEGER,
-            tags TEXT,
-            grade INTEGER NOT NULL
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                added_date DATE DEFAULT (date('now', 'localtime')),
+                title TEXT NOT NULL,
+                author TEXT,
+                start_year INTEGER,
+                end_year INTEGER,
+                tags TEXT,
+                grade INTEGER NOT NULL
             );
                           
             CREATE TABLE IF NOT EXISTS movie_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            added_date DATE DEFAULT (date('now', 'localtime')),
-            title TEXT NOT NULL,
-            director TEXT,
-            start_year INTEGER,
-            end_year INTEGER,
-            tags TEXT,
-            grade INTEGER NOT NULL
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                added_date DATE DEFAULT (date('now', 'localtime')),
+                title TEXT NOT NULL,
+                director TEXT,
+                start_year INTEGER,
+                end_year INTEGER,
+                tags TEXT,
+                grade INTEGER NOT NULL,
+                stars TEXT
             );
 
             CREATE TABLE IF NOT EXISTS series_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            added_date DATE DEFAULT (date('now', 'localtime')),
-            title TEXT NOT NULL,
-            creator TEXT,
-            start_year INTEGER,
-            end_year INTEGER,
-            tags TEXT,
-            grade INTEGER NOT NULL
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                added_date DATE DEFAULT (date('now', 'localtime')),
+                title TEXT NOT NULL,
+                creator TEXT,
+                start_year INTEGER,
+                end_year INTEGER,
+                tags TEXT,
+                grade INTEGER NOT NULL,
+                stars TEXT            
             );
 
             CREATE TABLE IF NOT EXISTS music_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            added_date DATE DEFAULT (date('now', 'localtime')),
-            artist TEXT NOT NULL,
-            tags TEXT,
-            grade INTEGER NOT NULL
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                added_date DATE DEFAULT (date('now', 'localtime')),
+                artist TEXT NOT NULL,
+                tags TEXT,
+                grade INTEGER NOT NULL
             );
 
             CREATE INDEX IF NOT EXISTS idx_book_added_date ON book_entries (added_date);
@@ -770,6 +801,7 @@ class Rankings:
             CREATE INDEX IF NOT EXISTS idx_movie_added_date ON movie_entries (added_date);
             CREATE INDEX IF NOT EXISTS idx_movie_title ON movie_entries (title);
             CREATE INDEX IF NOT EXISTS idx_movie_director ON movie_entries (director);
+            CREATE INDEX IF NOT EXISTS idx_movie_stars ON movie_entries (stars);
             CREATE INDEX IF NOT EXISTS idx_movie_start_year ON movie_entries (start_year);
             CREATE INDEX IF NOT EXISTS idx_movie_end_year ON movie_entries (end_year);
             CREATE INDEX IF NOT EXISTS idx_movie_tags ON movie_entries (tags);
@@ -778,6 +810,7 @@ class Rankings:
             CREATE INDEX IF NOT EXISTS idx_series_added_date ON series_entries (added_date);
             CREATE INDEX IF NOT EXISTS idx_series_title ON series_entries (title);
             CREATE INDEX IF NOT EXISTS idx_series_creator ON series_entries (creator);
+            CREATE INDEX IF NOT EXISTS idx_series_stars ON series_entries (stars);
             CREATE INDEX IF NOT EXISTS idx_series_start_year ON series_entries (start_year);
             CREATE INDEX IF NOT EXISTS idx_series_end_year ON series_entries (end_year);
             CREATE INDEX IF NOT EXISTS idx_series_tags ON series_entries (tags);
@@ -825,12 +858,17 @@ class Rankings:
                 criteria, value = c_v
                 if criteria == "grade":
                     from_grade, to_grade = value
-                    filter_criterias.append("grade >= ? and grade <= ?")
+                    filter_criterias.append("grade >= ? AND grade <= ?")
                     filter_values.append(from_grade)
                     filter_values.append(to_grade)
                 elif criteria == self.type_to_person[t]:
-                    filter_criterias.append(f"LOWER({criteria}) LIKE LOWER(?)")
-                    filter_values.append(f"%{value}%")
+                    for person in value:
+                        filter_criterias.append(f"LOWER({person}) LIKE LOWER(?)")
+                        filter_values.append(f"%{value}%")
+                elif criteria == "stars":
+                    for star in value:
+                        filter_criterias.append("LOWER(stars) LIKE LOWER(?)")
+                        filter_values.append(f"%{star}%")
                 elif criteria == "tags":
                     for tag in value:
                         filter_criterias.append("LOWER(tags) LIKE LOWER(?)")
@@ -984,7 +1022,15 @@ class Rankings:
             box = self.widgets[f"{tab} top_box"]
             box.clear()
 
-            if t == "book" or t == "movie" or t == "series":
+            if t == "movie" or t == "series":
+                box.add(
+                    self.widgets[f"{tab} title label"], self.widgets[f"{tab} title"], self.widgets[f"{tab} switch"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets[f"{tab} {t}_person label"], self.widgets[f"{tab} person"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets[f"{tab} stars label"], self.widgets[f"{tab} stars"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets[f"{tab} year box"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets[f"{tab} tags label"], self.widgets[f"{tab} tags"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets[f"{tab} grade label"], self.widgets[f"{tab} grade"])
+            elif t == "book":
                 box.add(
                     self.widgets[f"{tab} title label"], self.widgets[f"{tab} title"], self.widgets[f"{tab} switch"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
                     self.widgets[f"{tab} {t}_person label"], self.widgets[f"{tab} person"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
@@ -1033,16 +1079,31 @@ class Rankings:
                     person[i].capitalize(force=True)
                     person[i] = str(person[i])
                     person[i] = person[i][0].upper() + person[i][1:]
+
                 person = ", ".join(sorted(person))
+
             else:
                 person = ", ".join(person)
 
-        elif person:
-            for i in range(len(person)):
-                person[i] = HumanName(person[i])
-                person[i].capitalize(force=True)
-                person[i] = str(person[i])
-            person = ", ".join(sorted(person))
+        else:
+            if person:
+                for i in range(len(person)):
+                    person[i] = HumanName(person[i])
+                    person[i].capitalize(force=True)
+                    person[i] = str(person[i])
+
+                person = ", ".join(sorted(person))
+
+            if t == "movie" or t == "series":
+                stars_value = self.add_stars.value
+                stars = [p.strip() for p in stars_value.split(",")]
+
+                for i in range(len(stars)):
+                    stars[i] = HumanName(stars[i])
+                    stars[i].capitalize(force=True)
+                    stars[i] = str(stars[i])
+
+                stars = ", ".join(sorted(stars))
         
         tags = self.get_tags(self.add_tags.value)
 
@@ -1057,11 +1118,19 @@ class Rankings:
             error_str = "title"
 
             years = [int(y) if y else None for y in (start_year, end_year)]
-            query = f"""
-                INSERT INTO {t}_entries (title, {self.type_to_person[t]}, start_year, end_year, tags, grade)
-                VALUES (?, ?, ?, ?, ?, ?);
-            """
-            values = (title, person, years[0], years[1], tags, grade)
+
+            if t != "book":
+                query = f"""
+                    INSERT INTO {t}_entries (title, {self.type_to_person[t]}, stars, start_year, end_year, tags, grade)
+                    VALUES (?, ?, ?, ?, ?, ?, ?);
+                """
+                values = (title, person, stars, years[0], years[1], tags, grade)
+            else:
+                query = """
+                    INSERT INTO book_entries (title, author, start_year, end_year, tags, grade)
+                    VALUES (?, ?, ?, ?, ?, ?);
+                """
+                values = (title, person, years[0], years[1], tags, grade)
         else:
             check_query = f"""
                 SELECT id FROM music_entries 
@@ -1171,12 +1240,25 @@ class Rankings:
                     person = ", ".join(sorted(person))
                 else:
                     person = ", ".join(person)
-        elif person:
-            for i in range(len(person)):
-                person[i] = HumanName(person[i])
-                person[i].capitalize(force=True)
-                person[i] = str(person[i])
-            person = ", ".join(sorted(person))
+        else:
+            if person:
+                for i in range(len(person)):
+                    person[i] = HumanName(person[i])
+                    person[i].capitalize(force=True)
+                    person[i] = str(person[i])
+
+                person = ", ".join(sorted(person))
+
+            if t == "movie" or t == "series":
+                stars_value = self.edit_stars.value
+                stars = [p.strip() for p in stars_value.split(",")]
+
+                for i in range(len(stars)):
+                    stars[i] = HumanName(stars[i])
+                    stars[i].capitalize(force=True)
+                    stars[i] = str(stars[i])
+
+                stars = ", ".join(sorted(stars))
         
         tags = self.get_tags(self.edit_tags.value)
 
@@ -1191,12 +1273,22 @@ class Rankings:
             error_str = "title"
 
             years = [int(y) if y else None for y in (start_year, end_year)]
-            query = f"""
-                UPDATE {t}_entries
-                SET title = ?, {self.type_to_person[t]} = ?, start_year = ?, end_year = ?, tags = ?, grade = ?
-                WHERE id = ?;
-            """
-            values = (title, person, years[0], years[1], tags, grade, id)
+
+            values = (title, person, years[0], years[1], tags, grade)
+            if t != "book":
+                query = f"""
+                    UPDATE {t}_entries
+                    SET title = ?, {self.type_to_person[t]} = ?, start_year = ?, end_year = ?, tags = ?, grade = ?, stars = ?
+                    WHERE id = ?;
+                """
+                values += (stars, id)
+            else:
+                query = """
+                    UPDATE book_entries
+                    SET title = ?, author = ?, start_year = ?, end_year = ?, tags = ?, grade = ?
+                    WHERE id = ?;
+                """
+                values += (id,)
         else:
             check_query = f"""
                 SELECT id FROM music_entries 
@@ -1266,38 +1358,28 @@ class Rankings:
         self.sort_grades[0].value, self.sort_grades[1].value = "E", "S"
         self.sort_tags.value = ""
         self.sort_added_dates[0].value, self.sort_added_dates[1].value = date(2024, 7, 25), date.today()
-        if self.sort_type.value.lower() != "music":
+        if (entry_type := self.sort_type.value.lower()) != "music":
             self.sort_person.value = ""
             self.sort_start_years[0].value, self.sort_start_years[1].value = "", ""
+            if entry_type != "book":
+                self.sort_stars.value = ""
 
     def format_title(self, title, max_length=52):
         if len(title) > max_length:
             words = title.split()
-            first_row = ""
-            second_row = ""
+            result = ""
             
             for word in words:
-                if len(first_row) + len(word) + 1 <= max_length:
-                    first_row += word + " "
+                if len(result) + len(word) <= max_length:
+                    result += word + " "
                 else:
+                    result = result.rstrip() + "..."
                     break
-            first_row = first_row.rstrip()
 
-            for word in words[len(first_row.split()):]:
-                if len(second_row) + len(word) + 1 <= max_length:
-                    second_row += word + " "
-                else:
-                    break
-            second_row = second_row.rstrip()
-
-            if len(second_row) < max_length and words[len(first_row.split())+len(second_row.split()):]:
-                remaining_length = max_length - len(second_row) - 4
-                second_row = second_row[:remaining_length].rstrip() + "..."
-
-            return first_row, second_row
+            return result
         
         else:
-            return title, ""
+            return title
 
     def format_person(self, person, max_length=42):
         if len(person) > max_length:
@@ -1359,11 +1441,11 @@ class Rankings:
     def get_entry_box(self, entry_type, entry, edit_button=False):
         id = entry[0]
         added_date = entry[1]
-        grade = self.int_to_grade[entry[-1]]
+        grade_idx = -1 if entry_type == "book" or entry_type == "music" else -2
+        grade = self.int_to_grade[entry[grade_idx]]
 
         if entry_type != "music":
-            rows = self.format_title(entry[2])
-            title = rows[0] + '\n' + rows[1]
+            title = self.format_title(entry[2])
             person = self.format_person(entry[3]) if entry[3] else "—"
             if entry[4]:
                 if entry[4] == entry[5]:
@@ -1384,9 +1466,15 @@ class Rankings:
             main_label = toga.Label(
                 title, 
                 style=Pack(padding=4, font_size=11, font_weight="bold", color="#EBF6F7"))
-            middle_label = toga.Label(
-                f"{self.type_to_person[entry_type].capitalize()}: {person}\nYear: {year} | Added: {added_date}\nTags: {tags}", 
-                style=Pack(padding=4, font_size=11, color="#EBF6F7"))
+            if entry_type != "book":
+                stars = self.format_person(entry[8], max_length=46) if entry[8] else "—"
+                middle_label = toga.Label(
+                    f"{self.type_to_person[entry_type].capitalize()}: {person}\nStars: {stars}\nYear: {year} | Added: {added_date}\nTags: {tags}", 
+                    style=Pack(padding=4, font_size=11, color="#EBF6F7"))
+            else:
+                middle_label = toga.Label(
+                    f"{self.type_to_person[entry_type].capitalize()}: {person}\nYear: {year} | Added: {added_date}\nTags: {tags}", 
+                    style=Pack(padding=4, font_size=11, color="#EBF6F7"))
             grade_label = toga.Label(
                 f"Grade: {grade}", 
                 style=Pack(padding=4, font_size=11, color="#EBF6F7"))
@@ -1447,7 +1535,7 @@ class Rankings:
 
         if t != "music":
             if (person := self.sort_person.value):
-                filtering.append((self.type_to_person[t], person.strip()))
+                filtering.append((self.type_to_person[t], [p.strip() for p in person.split(",")]))
             
             start_year = self.sort_start_years[0].value
             end_year = self.sort_start_years[1].value
@@ -1465,6 +1553,11 @@ class Rankings:
             
             self.data["filtering"][t]["person"] = person
             self.data["filtering"][t]["start_year"] = (start_year, end_year)
+
+            if t != "book":
+                if (stars := self.sort_stars.value):
+                    filtering.append(("stars", [p.strip() for p in stars.split(",")]))
+                self.data["filtering"][t]["stars"] = stars
 
         self.data["filtering"][t]["tags"] = tags
         self.data["filtering"][t]["grade"] = [self.int_to_grade[grades[i]] for i in range(2)]
@@ -1498,7 +1591,14 @@ class Rankings:
         t = self.search_type.value.lower()
 
         values = f"{self.type_to_person[t]}, tags, grade"
-        values += ", title, start_year, end_year" if t != "music" else ""
+        widgets = ["person", "tags", "grade"]
+        if t != "music":
+            values += ", title, start_year, end_year"
+            widgets += ["title", "start_year", "end_year"]
+            if t != "book":
+                values += ", stars"
+                widgets += ["stars",]
+
         query = f"""
             SELECT {values} FROM {t}_entries
             WHERE id = ?
@@ -1506,17 +1606,16 @@ class Rankings:
         con, cur = get_connection(self.db_path)
         cur.execute(query, (id,))
         entry = cur.fetchone()
+
         con.close()
 
-        widgets = ["person", "tags", "grade"]
-        widgets += ["title", "start_year", "end_year"] if t != "music" else []
         for i in range(len(widgets)):
             self.widgets[f"edit {widgets[i]}"].value = self.int_to_grade[entry[i]] if i == 2 else entry[i]
         self.widgets["edit switch"].value = False
 
 
     def clear_add_box(self):
-        for w in ["title", "person", "tags", "start_year", "end_year", "grade", "switch"]:
+        for w in ["title", "person", "stars", "tags", "start_year", "end_year", "grade", "switch"]:
             if w == "grade":
                 self.widgets[f"add {w}"].value = "S"
             elif w == "switch":
@@ -1559,7 +1658,8 @@ class Rankings:
             start_year INTEGER,
             end_year INTEGER,
             tags TEXT,
-            grade INTEGER NOT NULL
+            grade INTEGER NOT NULL,
+            stars TEXT
             );
 
             CREATE TABLE series_entries (
@@ -1570,7 +1670,8 @@ class Rankings:
             start_year INTEGER,
             end_year INTEGER,
             tags TEXT,
-            grade INTEGER NOT NULL
+            grade INTEGER NOT NULL,
+            stars TEXT,   
             );
 
             CREATE TABLE music_entries (
@@ -1592,6 +1693,7 @@ class Rankings:
             CREATE INDEX idx_movie_added_date ON movie_entries (added_date);
             CREATE INDEX idx_movie_title ON movie_entries (title);
             CREATE INDEX idx_movie_director ON movie_entries (director);
+            CREATE INDEX idx_movie_stars ON movie_entries (stars);
             CREATE INDEX idx_movie_start_year ON movie_entries (start_year);
             CREATE INDEX idx_movie_end_year ON movie_entries (end_year);
             CREATE INDEX idx_movie_tags ON movie_entries (tags);
@@ -1600,6 +1702,7 @@ class Rankings:
             CREATE INDEX idx_series_added_date ON series_entries (added_date);
             CREATE INDEX idx_series_title ON series_entries (title);
             CREATE INDEX idx_series_creator ON series_entries (creator);
+            CREATE INDEX idx_series_stars ON series_entries (stars);
             CREATE INDEX idx_series_start_year ON series_entries (start_year);
             CREATE INDEX idx_series_end_year ON series_entries (end_year);
             CREATE INDEX idx_series_tags ON series_entries (tags);
