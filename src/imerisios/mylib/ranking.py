@@ -1267,7 +1267,7 @@ class Rankings:
             self.sort_person.value = ""
             self.sort_start_years[0].value, self.sort_start_years[1].value = "", ""
 
-    def format_title(self, title, max_length=48):
+    def format_title(self, title, max_length=52):
         if len(title) > max_length:
             words = title.split()
             first_row = ""
@@ -1296,7 +1296,7 @@ class Rankings:
         else:
             return title, ""
 
-    def format_person(self, person, max_length=38):
+    def format_person(self, person, max_length=42):
         if len(person) > max_length:
             people = person.split(", ")
             
@@ -1322,7 +1322,7 @@ class Rankings:
             return person
         
 
-    def format_tags(self, tags, first_max_length=42, second_max_length=48):
+    def format_tags(self, tags, first_max_length=46, second_max_length=52):
         if len(tags) > first_max_length:
             tag_list = tags.split(", ")
             
