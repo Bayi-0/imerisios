@@ -924,19 +924,20 @@ class Rankings:
 
             elif widget_id[0] == "search":
                 t = self.search_type.value.lower()
-                input = self.search_input.value.strip()
-                self.ranking_get_data(search=(t, input))
-                box = self.search_result_box
-                box.clear()
+                input = self.search_input.value
+                if input:
+                    self.ranking_get_data(search=(t, input.strip()))
+                    box = self.search_result_box
+                    box.clear()
 
-                if (data := self.data["search"]):
-                    for e in data:
-                        box.add(self.get_entry_box(t, e, True))
-                else:
-                    box.add(
-                        toga.Label(
-                        "No entries found.",
-                        style=Pack(padding=10, font_size=12, color="#EBF6F7")))
+                    if (data := self.data["search"]):
+                        for e in data:
+                            box.add(self.get_entry_box(t, e, True))
+                    else:
+                        box.add(
+                            toga.Label(
+                            "No entries found.",
+                            style=Pack(padding=10, font_size=12, color="#EBF6F7")))
 
     
     def change_range(self, widget):

@@ -172,7 +172,8 @@
 - Adjusted button paddings in ranking edit;
 - Made ranking tabs open on previously chosen tab/type;
 - Solved the problem with first word ("the" etc.) not being capitalized when autoformatting for artists in rankings;
-- Fixed tag sorting in rankings.
+- Fixed tag sorting in rankings;
+- Fixed search without input.
 
 ### Removed
 - N/A
