@@ -438,10 +438,10 @@ class Rankings:
         # button box
         remove_button = toga.Button(
                 "Remove", on_press=self.remove_entry_dialog, 
-                style=Pack(flex=0.5, height=120, padding=(4,4,11,11), font_size=24, color="#EBF6F7", background_color="#27221F"))
+                style=Pack(flex=0.5, height=120, padding=(11,4,11,11), font_size=24, color="#EBF6F7", background_color="#27221F"))
         save_button = toga.Button(
                 "Save", on_press=self.save_entry_dialog, 
-                style=Pack(flex=0.5, height=120, padding=(4,11,11,4), font_size=24, color="#EBF6F7", background_color="#27221F"))
+                style=Pack(flex=0.5, height=120, padding=(11,11,11,4), font_size=24, color="#EBF6F7", background_color="#27221F"))
         bottom_box = toga.Box(children=[remove_button, save_button], style=Pack(direction=ROW, flex=0.19))
 
         # return box

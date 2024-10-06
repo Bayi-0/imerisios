@@ -168,7 +168,9 @@
 ### Fixed
 - Only unique tags are now kept for ranking entries;
 - Rankings cannot have same title/artist now;
-- Adjusted character numbers for formatting in rankings.
+- Adjusted character numbers for formatting in rankings;
+- Adjusted button paddings in ranking edit;
+- Made ranking tabs open on previously chosen tab/type.
 
 ### Removed
 - N/A

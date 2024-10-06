@@ -365,7 +365,14 @@ class Imerisios(toga.App):
     
     def open_ranking(self, widget, tab: str="Book"):
         self.setup_ui(rankings=self.setup_rankings)
-
+        
+        if self.main_window.content == self.ranking_search_box:
+            tab = self.rankings.search_type.value
+        elif self.main_window.content == self.ranking_add_box:
+            tab = self.rankings.add_type.value 
+        elif self.main_window.content == self.ranking_edit_box:
+            tab = self.rankings.edit_type.value    
+            
         self.ranking_box.current_tab = tab
         self.main_window.content = self.ranking_box
         self.enable_commands([self.ranking_command])
@@ -390,21 +397,34 @@ class Imerisios(toga.App):
         
         self.rankings.add_entry_container.position = toga.Position(0,0)
         self.rankings.type_change_check = True
-        self.rankings.add_type.value = self.ranking_box.current_tab.text
+
+        if self.main_window.content == self.ranking_box:
+            entry_type = self.ranking_box.current_tab.text
+        elif self.main_window.content == self.ranking_search_box:
+            entry_type = self.rankings.search_type.value
+
+        self.rankings.add_type.value = entry_type
         if self.rankings.type_change_check:
             self.rankings.type_change(self.rankings.add_type)
         self.rankings.clear_add_box()
 
         self.main_window.content = self.ranking_add_box
         self.enable_commands([self.ranking_add_command])
-        self.build_toolbar([(self.menu_command, True), (self.ranking_command, True)])
+        self.build_toolbar([(self.menu_command, True), (self.ranking_command, True), (self.ranking_search_command, True)])
 
     
     def open_ranking_search(self, widget):
         self.setup_ui(rankings=self.setup_rankings)
 
+        if self.main_window.content == self.ranking_box:
+            entry_type = self.ranking_box.current_tab.text
+        elif self.main_window.content == self.ranking_add_box:
+            entry_type = self.rankings.add_type.value
+        elif self.main_window.content == self.ranking_edit_box:
+            entry_type = self.rankings.edit_type.value
+
         self.rankings.type_change_check = True
-        self.rankings.search_type.value = self.ranking_box.current_tab.text
+        self.rankings.search_type.value = entry_type
         if self.rankings.type_change_check:
             self.rankings.type_change(self.rankings.search_type)
 
