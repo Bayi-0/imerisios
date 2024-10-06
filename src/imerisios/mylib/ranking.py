@@ -1031,6 +1031,7 @@ class Rankings:
                     person[i] = HumanName(person[i])
                     person[i].capitalize(force=True)
                     person[i] = str(person[i])
+                    person[i] = person[i][0].upper() + person[i][1:]
                 person = ", ".join(sorted(person))
             else:
                 person = ", ".join(person)
@@ -1165,6 +1166,7 @@ class Rankings:
                         person[i] = HumanName(person[i])
                         person[i].capitalize(force=True)
                         person[i] = str(person[i])
+                        person[i] = person[i][0].upper() + person[i][1:]
                     person = ", ".join(sorted(person))
                 else:
                     person = ", ".join(person)
@@ -1618,13 +1620,13 @@ class Rankings:
     def get_tags(self, value):
         values = value.split(",")
         added = set()
-        tags = set()
+        tags = list()
 
         for tag in values:
             t = tag.strip()
             if t.lower() not in added:
                 added.add(t.lower())
-                tags.add(t)
+                tags.append(t)
 
         tags = titlecase(", ".join(sorted(tags)))
         return tags
