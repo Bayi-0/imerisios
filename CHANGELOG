@@ -176,3 +176,20 @@
 
 ### Removed
 - N/A
+
+
+## [v2.2.1] - 2024-10-07
+
+### Added
+- N/A
+
+### Changed
+- Merged format_tags and format_person into format_items in rankings;
+- Two rows for stars in rankings;
+- 60 days min instead of 90 for habit more average yearly number, adjusted paddings.
+
+### Fixed
+- N/A
+
+### Removed
+- N/A

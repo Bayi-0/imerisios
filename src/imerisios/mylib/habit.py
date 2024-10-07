@@ -338,7 +338,7 @@ class Habits:
         """, (id, id,))
         total_success_skip_percent = cur.fetchone()[0]
 
-        min_days = {7: 3, 30: 12, 365: 90}  
+        min_days = {7: 3, 30: 12, 365: 60}  
 
         average_rates = []
 
@@ -482,13 +482,13 @@ class Habits:
         
         weekly_success = toga.Label(
             f"Weekly: {average_rates[0]}", 
-            style=Pack(flex=0.33, padding=14, text_align="center", font_size=14, color="#EBF6F7"))
+            style=Pack(flex=0.33, padding=8, text_align="center", font_size=14, color="#EBF6F7"))
         monthly_success = toga.Label(
             f"Monthly: {average_rates[1]}", 
-            style=Pack(flex=0.33, padding=14, text_align="center", font_size=14, color="#EBF6F7"))
+            style=Pack(flex=0.33, padding=8, text_align="center", font_size=14, color="#EBF6F7"))
         yearly_success = toga.Label(
             f"Yearly: {average_rates[2]}", 
-            style=Pack(flex=0.33, padding=14, text_align="center", font_size=14, color="#EBF6F7"))
+            style=Pack(flex=0.33, padding=8, text_align="center", font_size=14, color="#EBF6F7"))
         average_rates_box = toga.Box(children=[weekly_success, monthly_success, yearly_success], style=Pack(direction=ROW))
 
         average_success_box = toga.Box(

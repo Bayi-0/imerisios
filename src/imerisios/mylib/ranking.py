@@ -1381,61 +1381,39 @@ class Rankings:
         else:
             return title
 
-    def format_person(self, person, max_length=42):
-        if len(person) > max_length:
-            people = person.split(", ")
-            
-            result = ""
-            
-            for i, person in enumerate(people):
-                if i == 0:
-                    temp_result = person
-                else:
-                    temp_result = result + ", " + person
-                
-                if len(temp_result) <= max_length:
-                    result = temp_result
-                else:
-                    if i == 0:
-                        return "..."
-                    else:
-                        return result + ", ..."
-            
-            return result
-    
-        else:
-            return person
-        
 
-    def format_tags(self, tags, first_max_length=46, second_max_length=52):
-        if len(tags) > first_max_length:
-            tag_list = tags.split(", ")
+    def format_items(self, items, first_max_length=42, second_max_length=None):
+        if len(items) > first_max_length:
+            item_list = items.split(", ")
             
             first_row = ""
-            second_row = ""
             
-            for tag in tag_list:
-                if len(first_row) + len(tag) + (1 if first_row else 0) <= first_max_length:
+            for item in item_list:
+                if len(first_row) + len(item) + (1 if first_row else 0) <= first_max_length:
                     if first_row:
                         first_row += ", "
-                    first_row += tag
+                    first_row += item
                 else:
                     first_row += ","
                     break
             
-            for tag in tag_list[len(first_row.split(", ")):]:
-                if len(second_row) + len(tag) + (1 if second_row else 0) <= second_max_length:
-                    if second_row:
-                        second_row += ", "
-                    second_row += tag
-                else:
-                    if second_row:
-                        second_row += ", ..."
-                    break
-            
-            return first_row, second_row
+            if second_max_length:
+                second_row = ""
+                for item in item_list[len(first_row.split(", ")):]:
+                    if len(second_row) + len(item) + (1 if second_row else 0) <= second_max_length:
+                        if second_row:
+                            second_row += ", "
+                        second_row += item
+                    else:
+                        if second_row:
+                            second_row += ", ..."
+                        break
+                
+                return first_row + "\n" + second_row
+            else:
+                return first_row + " ..."
         else:
-            return tags, ""
+            return items + ("\n" if second_max_length else "")
         
 
     def get_entry_box(self, entry_type, entry, edit_button=False):
@@ -1446,7 +1424,7 @@ class Rankings:
 
         if entry_type != "music":
             title = self.format_title(entry[2])
-            person = self.format_person(entry[3]) if entry[3] else "—"
+            person = self.format_items(entry[3], first_max_length=42) if entry[3] else "—"
             if entry[4]:
                 if entry[4] == entry[5]:
                     year = entry[4]
@@ -1455,8 +1433,7 @@ class Rankings:
             else:
                 year = "—"
             if entry[6]:
-                rows = self.format_tags(entry[6])
-                tags = rows[0] + '\n' + rows[1]
+                tags = self.format_items(entry[6], first_max_length=46, second_max_length=52)
             else:
                 tags = "—\n"
 
@@ -1467,7 +1444,7 @@ class Rankings:
                 title, 
                 style=Pack(padding=4, font_size=11, font_weight="bold", color="#EBF6F7"))
             if entry_type != "book":
-                stars = self.format_person(entry[8], max_length=46) if entry[8] else "—"
+                stars = self.format_items(entry[8], first_max_length=44, second_max_length=52) if entry[8] else "—\n"
                 middle_label = toga.Label(
                     f"{self.type_to_person[entry_type].capitalize()}: {person}\nStars: {stars}\nYear: {year} | Added: {added_date}\nTags: {tags}", 
                     style=Pack(padding=4, font_size=11, color="#EBF6F7"))
@@ -1482,8 +1459,7 @@ class Rankings:
         else:
             artist = entry[2]
             if entry[3]:
-                rows = self.format_tags(entry[3])
-                tags = rows[0] + '\n' + rows[1]
+                tags = self.format_items(entry[3], first_max_length=46, second_max_length=52)
             else:
                 tags = "—\n"
 
