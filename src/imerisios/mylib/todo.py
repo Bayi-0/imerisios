@@ -65,6 +65,12 @@ class ToDo:
             on_change=self.duedate_change,
             style=Pack(padding=(0,18), color="#EBF6F7"))
         self.widgets["add task duedate"] = self.add_duedate
+
+        reset_button = toga.Button(
+            "Reset type & date", 
+            id="add task reset",
+            on_press=self.reset_type_date, 
+            style=Pack(padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F"))
         
         top_box = toga.Box(
             children=[
@@ -72,7 +78,7 @@ class ToDo:
                 tier_label, self.add_tier, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
                 urgency_label, self.add_urgency, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
                 type_label, self.add_type, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                duedate_label, self.add_duedate
+                duedate_label, self.add_duedate, reset_button
             ], 
             style=Pack(direction=COLUMN, flex=0.73))
         top_container = toga.ScrollContainer(content=top_box, horizontal=False, vertical=False, style=Pack(flex=0.73))
@@ -140,13 +146,20 @@ class ToDo:
             style=Pack(padding=(0,18), color="#EBF6F7"))
         self.widgets["edit task duedate"] = self.edit_duedate
 
+        reset_button = toga.Button(
+            "Reset type & date", 
+            id="edit task reset", 
+            on_press=self.reset_type_date, 
+            style=Pack(padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F"))
+
         top_box = self.box = toga.Box(
             children=[
                 input_label, self.edit_input, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")), 
                 tier_label, self.edit_tier, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")), 
                 urgency_label, self.edit_urgency, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")), 
                 type_label, self.edit_type, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")), 
-                duedate_label, self.edit_duedate], 
+                duedate_label, self.edit_duedate, reset_button
+            ], 
             style=Pack(direction=COLUMN, flex=0.73))
         top_container = toga.ScrollContainer(content=top_box, horizontal=False, vertical=False, style=Pack(flex=0.73))
 
@@ -941,3 +954,22 @@ class ToDo:
         elif button == "next":
             if len(w.items) != idx+1:
                 w.value = w.items[idx+1].value
+
+            
+    def reset_type_date(self, widget):
+        tab = widget.id.split()[0]
+
+        self.dd_change = False
+        self.tt_change = False
+
+        w = self.widgets[f"{tab} task type"]
+        w.value = "Daily"
+        w.enabled = True
+        w.refresh()
+
+        w = self.widgets[f"{tab} task duedate"]
+        w.min = date.today()
+        w.max = self.type_dates_dict["yearly"][1]
+        w.refresh()
+
+        self.dd_change = self.tt_change = True

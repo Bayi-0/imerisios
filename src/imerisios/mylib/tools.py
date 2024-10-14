@@ -81,10 +81,10 @@ def get_month_dicts():
     return month_num_to_name, month_name_to_num
 
 
-def get_ranges(items):
+def get_ranges(items, chunk=20):
         ranges = []
         items_number = len(items)
-        chunk_size = 40
+        chunk_size = chunk
 
         start = 1
         if items_number == 0:

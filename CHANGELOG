@@ -193,3 +193,22 @@
 
 ### Removed
 - N/A
+
+
+## [v2.3.0] - 2024-10-14
+
+### Added
+- Tags exclude in ranking sort;
+- Reset type/date button in task add and edit.
+
+### Changed
+- Chunk size for task history and rankings set to 20;
+- Coin flip text is in modern English now.
+
+### Fixed
+- 6-digit id in habit more;
+- Ranking sort now takes only unique tags and names;
+- Updated a few dialog usages.
+
+### Removed
+- N/A

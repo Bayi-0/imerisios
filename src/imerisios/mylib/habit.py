@@ -414,7 +414,7 @@ class Habits:
             habit_records[year][month][day] = state
 
         habit_more_label = toga.Label(
-            f"Habit [{id:04d}]\n{name}", 
+            f"Habit [{id:06d}]\n{name}", 
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=15, color="#EBF6F7"))
         self.habit_more_label_box = toga.Box(
             children=[habit_more_label],
@@ -860,7 +860,7 @@ class Habits:
                 WHERE name = ?;
                 """, (new_name,))
         if result := cur.fetchone():
-            self.app.dialog(toga.InfoDialog("Habit Already Exists", f"Habit [{result[0]:04d}] already uses this name."))
+            await self.app.dialog(toga.InfoDialog("Habit Already Exists", f"Habit [{result[0]:04d}] already uses this name."))
             self.habit_more_rename_input.value = ""
         else:
             cur.execute("""

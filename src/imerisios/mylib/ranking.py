@@ -483,10 +483,10 @@ class Rankings:
             "music": ["—", "Grade", "Artist", "Added Date"]}
         self.data["sorting"] = {t:[("—", "Asc") for _ in range(3)] for t in self.ranking_types}
         self.data["filtering"] = {
-            t:{"grade": ("E", "S"), "person": "", "stars": "", "tags": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), date.today())}
+            t:{"grade": ("E", "S"), "person": "", "stars": "", "tags_include": "", "tags_exclude": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), date.today())}
             for t in self.ranking_types if t != "music" and t != "book"}
-        self.data["filtering"]["book"] = {"grade": ("E", "S"), "person": "", "tags": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), date.today())}
-        self.data["filtering"]["music"] = {"grade": ("E", "S"), "tags": "", "added_date": [date(year=2024, month=7, day=25), date.today()]}
+        self.data["filtering"]["book"] = {"grade": ("E", "S"), "person": "", "tags_include": "", "tags_exclude": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), date.today())}
+        self.data["filtering"]["music"] = {"grade": ("E", "S"), "tags_include": "", "tags_exclude": "", "added_date": [date(year=2024, month=7, day=25), date.today()]}
         self.data["load sorting"] = {t:[] for t in self.ranking_types}
         self.data["load filtering"] = {t:[] for t in self.ranking_types}
         
@@ -598,8 +598,16 @@ class Rankings:
             "Tags:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
         self.widgets["sort tags label"] = tags_label
-        self.sort_tags = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["sort tags"] = self.sort_tags
+        
+        self.sort_tags_include = toga.TextInput(
+            placeholder="include",
+            style=Pack(padding=(0,18,0), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+        self.widgets["sort tags_include"] = self.sort_tags_include
+
+        self.sort_tags_exclude = toga.TextInput(
+            placeholder="exclude",
+            style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+        self.widgets["sort tags_exclude"] = self.sort_tags_exclude
 
         ## start year between
         start_year_label = toga.Label(
@@ -652,7 +660,7 @@ class Rankings:
                     self.widgets[f"sort {t}_person label"], self.sort_person, dividers[2]]
                 self.filters[t] += [stars_label, self.sort_stars, dividers[6]] if t != "book" else []
                 self.filters[t] += [
-                    tags_label, self.sort_tags, dividers[3],
+                    tags_label, self.sort_tags_include, self.sort_tags_exclude, dividers[3],
                     start_year_label, start_year_box, dividers[4],
                     added_date_label, added_date_box, dividers[5], 
                     filter_reset_button
@@ -661,7 +669,7 @@ class Rankings:
                 self.filters[t] = [
                     filter_label, dividers[0],
                     grade_label, grade_box, dividers[1],
-                    tags_label, self.sort_tags, dividers[2],
+                    tags_label, self.sort_tags_include, self.sort_tags_exclude, dividers[2],
                     added_date_label, added_date_box, dividers[3], 
                     filter_reset_button
                 ]
@@ -869,9 +877,13 @@ class Rankings:
                     for star in value:
                         filter_criterias.append("LOWER(stars) LIKE LOWER(?)")
                         filter_values.append(f"%{star}%")
-                elif criteria == "tags":
+                elif criteria == "tags_include":
                     for tag in value:
                         filter_criterias.append("LOWER(tags) LIKE LOWER(?)")
+                        filter_values.append(f"%{tag}%")
+                elif criteria == "tags_exclude":
+                    for tag in value:
+                        filter_criterias.append("LOWER(tags) NOT LIKE LOWER(?)")
                         filter_values.append(f"%{tag}%")
                 elif criteria == "start_year":
                     from_year, to_year = value
@@ -1228,7 +1240,7 @@ class Rankings:
         person = [p.strip() for p in self.edit_person.value.split(",")]
         if t == "music":
             if not person:
-                self.app.dialog(toga.InfoDialog("Error", "Artist must be specified."))
+                await self.app.dialog(toga.InfoDialog("Error", "Artist must be specified."))
                 return 0
             else:
                 if self.edit_switch.value:
@@ -1356,7 +1368,8 @@ class Rankings:
 
     def reset_filter(self, widget):
         self.sort_grades[0].value, self.sort_grades[1].value = "E", "S"
-        self.sort_tags.value = ""
+        self.sort_tags_include.value = ""
+        self.sort_tags_exclude.value = ""
         self.sort_added_dates[0].value, self.sort_added_dates[1].value = date(2024, 7, 25), date.today()
         if (entry_type := self.sort_type.value.lower()) != "music":
             self.sort_person.value = ""
@@ -1489,36 +1502,51 @@ class Rankings:
         return entry_box
     
 
-    def check_sort_inputs(self, widget):
+    async def check_sort_inputs(self, widget):
         t = self.sort_type.value.lower()
 
         # filter 
         filtering = []       
         grades = [self.grade_to_int[self.sort_grades[i].value] for i in range(2)]
         if grades[0] > grades[1]:
-            self.app.info_dialog("Error", "The from (first) grade cannot be higher than the to (second) grade.")
+            await self.app.dialog(toga.InfoDialog("Error", "The from (first) grade cannot be higher than the to (second) grade."))
             return 0
         filtering.append(("grade", grades))
         
-        if (tags := self.sort_tags.value):
-            filtering.append(("tags", [tag.strip() for tag in tags.split(",")]))
+        tags_include = self.sort_tags_include.value
+        tags_exclude = self.sort_tags_exclude.value
+
+        temp_include = set(tag.strip().lower() for tag in tags_include.split(","))
+        temp_exclude = set(tag.strip().lower() for tag in tags_exclude.split(","))
+        
+        if tags_include and tags_exclude:
+            if temp_include & temp_exclude:
+                await self.app.dialog(toga.InfoDialog("Error", "Tags in include and exclude lists cannot overlap."))
+                return 0
+            else:
+                filtering.append(("tags_include", temp_include))
+                filtering.append(("tags_exclude", temp_exclude))
+        elif tags_include:
+            filtering.append(("tags_include", temp_include))
+        elif tags_exclude:
+            filtering.append(("tags_exclude", temp_exclude))
 
         dates = (self.sort_added_dates[0].value, self.sort_added_dates[1].value)
         if dates[0] > dates[1]:
-            self.app.info_dialog("Error", "The from (first) date cannot be higher than the to (second) date.")
+            await self.app.dialog(toga.InfoDialog("Error", "The from (first) date cannot be higher than the to (second) date."))
             return 0
         filtering.append(("added_date", dates))
 
         if t != "music":
             if (person := self.sort_person.value):
-                filtering.append((self.type_to_person[t], [p.strip() for p in person.split(",")]))
+                filtering.append((self.type_to_person[t], set(p.strip().lower() for p in person.split(","))))
             
             start_year = self.sort_start_years[0].value
             end_year = self.sort_start_years[1].value
             if start_year or end_year:
                 if start_year and end_year:
                     if start_year[0] > end_year[1]:
-                        self.app.info_dialog("Error", "The from (first) year cannot be higher than the to (second) year.")
+                        await self.app.dialog(toga.InfoDialog("Error", "The from (first) year cannot be higher than the to (second) year."))
                         return 0
                     years = (int(start_year), int(end_year))
                 elif start_year:
@@ -1532,10 +1560,11 @@ class Rankings:
 
             if t != "book":
                 if (stars := self.sort_stars.value):
-                    filtering.append(("stars", [p.strip() for p in stars.split(",")]))
+                    filtering.append(("stars", set(p.strip().lower() for p in stars.split(","))))
                 self.data["filtering"][t]["stars"] = stars
 
-        self.data["filtering"][t]["tags"] = tags
+        self.data["filtering"][t]["tags_include"] = tags_include
+        self.data["filtering"][t]["tags_exclude"] = tags_exclude
         self.data["filtering"][t]["grade"] = [self.int_to_grade[grades[i]] for i in range(2)]
         self.data["filtering"][t]["added_date"] = [self.sort_added_dates[i].value for i in range(2)]
 
