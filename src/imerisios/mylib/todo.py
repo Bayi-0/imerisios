@@ -886,9 +886,9 @@ class ToDo:
                     children=[done, edit],
                     style=Pack(direction=COLUMN, padding=4, height=110, width=84))
                 
-            bottom_str = f"Tier: {task[2].capitalize()} | Urgency: {task[3].capitalize()}\nAdded: {task[4]} | Due: {task[5]}"
+            bottom_str = f"Tier: {task[2].capitalize()}  |  Urgency: {task[3].capitalize()}\nAdded: {task[4]}  |  Due: {task[5]}"
         else:
-            bottom_str = f"Added: {task[2]} | Completed: {task[3]}"
+            bottom_str = f"Added: {task[2]}  |  Completed: {task[3]}"
             
         id_label = toga.Label(
             f"[{id:06d}]", 

@@ -1400,19 +1400,38 @@ class Rankings:
             item_list = items.split(", ")
             
             first_row = ""
-            
+            first_done = False
+            leftover = "" 
+
             for item in item_list:
-                if len(first_row) + len(item) + (1 if first_row else 0) <= first_max_length:
-                    if first_row:
-                        first_row += ", "
-                    first_row += item
+                if not first_done:
+                    words = item.split(" ")
+                    i = 0
+                    for w in words:
+                        if len(first_row) + len(w) + (1 if first_row else 0) <= first_max_length:
+                            if first_row:
+                                if i == 0:
+                                    first_row += ", "
+                                else:
+                                    first_row += " "
+                            first_row += w
+                            i += 1
+                        else:
+                            if i == 0:
+                                first_row += ","
+                            else:
+                                leftover = " ".join(words[i:])
+
+                            first_done = True
+                            break
                 else:
-                    first_row += ","
                     break
             
             if second_max_length:
                 second_row = ""
-                for item in item_list[len(first_row.split(", ")):]:
+                item_list = [leftover,] + item_list[len(first_row.split(", ")):]
+
+                for item in item_list:
                     if len(second_row) + len(item) + (1 if second_row else 0) <= second_max_length:
                         if second_row:
                             second_row += ", "
@@ -1424,6 +1443,8 @@ class Rankings:
                 
                 return first_row + "\n" + second_row
             else:
+                if leftover:
+                    first_row = first_row.split(", ")[:-1].join(" ")
                 return first_row + " ..."
         else:
             return items + ("\n" if second_max_length else "")
@@ -1459,11 +1480,11 @@ class Rankings:
             if entry_type != "book":
                 stars = self.format_items(entry[8], first_max_length=44, second_max_length=52) if entry[8] else "—\n"
                 middle_label = toga.Label(
-                    f"{self.type_to_person[entry_type].capitalize()}: {person}\nStars: {stars}\nYear: {year} | Added: {added_date}\nTags: {tags}", 
+                    f"{self.type_to_person[entry_type].capitalize()}: {person}\nStars: {stars}\nYear: {year}  |  Added: {added_date}\nTags: {tags}", 
                     style=Pack(padding=4, font_size=11, color="#EBF6F7"))
             else:
                 middle_label = toga.Label(
-                    f"{self.type_to_person[entry_type].capitalize()}: {person}\nYear: {year} | Added: {added_date}\nTags: {tags}", 
+                    f"{self.type_to_person[entry_type].capitalize()}: {person}\nYear: {year}  |  Added: {added_date}\nTags: {tags}", 
                     style=Pack(padding=4, font_size=11, color="#EBF6F7"))
             grade_label = toga.Label(
                 f"Grade: {grade}", 
