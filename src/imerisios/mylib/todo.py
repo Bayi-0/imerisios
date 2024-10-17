@@ -309,6 +309,7 @@ class ToDo:
         routine_task_box = toga.Box(id="routine task box", style=Pack(direction=COLUMN))
         self.widgets["routine task box"] = routine_task_box
         routine_task_container = toga.ScrollContainer(content=routine_task_box, horizontal=False, style=Pack(flex=0.9))
+        self.widgets["routine task container"] = routine_task_container
 
         routine_box = toga.Box(
             children=[
@@ -349,6 +350,7 @@ class ToDo:
         challenging_task_box = toga.Box(id="challenging task box", style=Pack(direction=COLUMN))
         self.widgets["challenging task box"] = challenging_task_box
         challenging_task_container = toga.ScrollContainer(content=challenging_task_box, horizontal=False, style=Pack(flex=0.9))
+        self.widgets["challenging task container"] = challenging_task_container
         
         challenging_box = toga.Box(
             children=[
@@ -388,6 +390,7 @@ class ToDo:
         significant_task_box = toga.Box(id="significant task box", style=Pack(direction=COLUMN))
         self.widgets["significant task box"] = significant_task_box
         significant_task_container = toga.ScrollContainer(content=significant_task_box, horizontal=False, style=Pack(flex=0.9))
+        self.widgets["significant task container"] = significant_task_container
 
         significant_box = toga.Box(
             children=[
@@ -427,6 +430,7 @@ class ToDo:
         momentous_task_box = toga.Box(id="momentous task box", style=Pack(direction=COLUMN))
         self.widgets["momentous task box"] = momentous_task_box
         momentous_task_container = toga.ScrollContainer(content=momentous_task_box, horizontal=False, style=Pack(flex=0.9))
+        self.widgets["momentous task container"] = momentous_task_container
 
         momentous_box = toga.Box(
             children=[
@@ -737,6 +741,8 @@ class ToDo:
                         task_box = self.get_task_box(task, button=False)
                         self.widgets["tasks"][id] = task_box
                     list_box.add(self.widgets["tasks"][id])
+            
+            self.widgets[f"{t} task container"].position = toga.Position(0,0)
 
 
     def update_task_types(self, load=True, con_cur=None):

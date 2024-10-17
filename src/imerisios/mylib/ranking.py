@@ -54,6 +54,7 @@ class Rankings:
         book_ranking_box = toga.Box(id="book ranking box", style=Pack(direction=COLUMN))
         self.widgets["book ranking box"] = book_ranking_box
         book_ranking_container = toga.ScrollContainer(content=book_ranking_box, horizontal=False, style=Pack(flex=0.75))
+        self.widgets["book ranking container"] = book_ranking_container
 
         book_box = toga.Box(
             children=[
@@ -98,6 +99,7 @@ class Rankings:
         movie_ranking_box = toga.Box(id="movie ranking box", style=Pack(direction=COLUMN))
         self.widgets["movie ranking box"] = movie_ranking_box
         movie_ranking_container = toga.ScrollContainer(content=movie_ranking_box, horizontal=False, style=Pack(flex=0.75))
+        self.widgets["movie ranking container"] = movie_ranking_container
 
         movie_box = toga.Box(
             children=[
@@ -142,6 +144,7 @@ class Rankings:
         series_ranking_box = toga.Box(id="series ranking box", style=Pack(direction=COLUMN))
         self.widgets["series ranking box"] = series_ranking_box
         series_ranking_container = toga.ScrollContainer(content=series_ranking_box, horizontal=False, style=Pack(flex=0.75))
+        self.widgets["series ranking container"] = series_ranking_container
 
         series_box = toga.Box(
             children=[
@@ -186,6 +189,7 @@ class Rankings:
         music_ranking_box = toga.Box(id="music ranking box", style=Pack(direction=COLUMN))
         self.widgets["music ranking box"] = music_ranking_box
         music_ranking_container = toga.ScrollContainer(content=music_ranking_box, horizontal=False, style=Pack(flex=0.75))
+        self.widgets["music ranking container"] = music_ranking_container
 
         music_box = toga.Box(
             children=[
@@ -965,6 +969,8 @@ class Rankings:
                             entry_box = self.get_entry_box(t, e)
                             self.widgets["entries"][t][id] = entry_box
                         box.add(self.widgets["entries"][t][id])
+
+                self.widgets[f"{t} ranking container"].position = toga.Position(0,0)
 
             elif widget_id[0] == "sort":
                 t = self.data["load type"]

@@ -214,13 +214,14 @@
 - N/A
 
 
-## [v2.3.1] - 2024-10-16
+## [v2.3.1] - 2024-10-17
 
 ### Added
 - N/A
 
 ### Changed
-- A few formatting adjustments.
+- A few formatting adjustments;
+- Scroll container position changed to (0; 0) when range value is changed.
 
 ### Fixed
 - N/A
