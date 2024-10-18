@@ -228,3 +228,18 @@
 
 ### Removed
 - N/A
+
+
+## [v2.3.2] - 2024-10-18
+
+### Added
+- N/A
+
+### Changed
+- N/A
+
+### Fixed
+- format_items func not working (properly) in a case.
+
+### Removed
+- N/A

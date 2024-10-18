@@ -1450,8 +1450,8 @@ class Rankings:
                 return first_row + "\n" + second_row
             else:
                 if leftover:
-                    first_row = first_row.split(", ")[:-1].join(" ")
-                return first_row + " ..."
+                    first_row = ", ".join(first_row.split(", ")[:-1])
+                return first_row + ", ..."
         else:
             return items + ("\n" if second_max_length else "")
         
