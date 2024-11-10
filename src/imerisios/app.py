@@ -11,6 +11,7 @@ import threading
 import time
 import schedule
 import asyncio
+from titlecase import titlecase
 from imerisios.mylib.coin import CoinFlip
 from imerisios.mylib.todo import ToDo
 from imerisios.mylib.habit import Habits
@@ -172,34 +173,93 @@ class Imerisios(toga.App):
         if settings:
             self.setup_ui(todo=self.setup_todo, habits=self.setup_habits, journal=self.setup_journal, rankings=self.setup_rankings)
 
+            s_div = [toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")) for _ in range(8)] 
+            div = [toga.Divider(style=Pack(background_color="#27221F")) for _ in range(4)]
+
+            # todo
+            todo_label = toga.Label(
+                "To-Do", 
+                style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
             reset_todo_button = toga.Button(
                 "Reset todo database", on_press=self.todo.reset_todo_dialog, 
+                style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
+            
+            # habit
+            habit_label = toga.Label(
+                "Habits", 
+                style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
+            reset_today_habit_records_button = toga.Button(
+                "Reset today's habit records", on_press=self.habits.reset_today_habit_records, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
             reset_habit_button = toga.Button(
                 "Reset habit database", on_press=self.habits.reset_habit_dialog, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
-            reset_today_habit_records_button = toga.Button(
-                "Reset today's habit records", on_press=self.habits.reset_today_habit_records, 
-                style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
+            
+            # journal
+            journal_label = toga.Label(
+                "Journal", 
+                style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
             reset_journal_button = toga.Button(
                 "Reset journal database", on_press=self.journal.reset_journal_dialog, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
+            
+            # ranking
+            ranking_label = toga.Label(
+                "Rankings", 
+                style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
+            
+            type_label = toga.Label(
+                "Type:", 
+                style=Pack(padding=(6,18,0), font_size=16, color="#EBF6F7"))
+            entry_type = toga.Selection(
+                items=[t.capitalize() for t in self.rankings.ranking_types],
+                style=Pack(padding=(0,18), height=44, flex=0.8))
+            type_box = toga.Box(
+                children=[type_label, entry_type],
+                style=Pack(direction=ROW))
+            old_tag = toga.TextInput(
+                placeholder="old tag",
+                style=Pack(padding=(0,18,0), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+            new_tag = toga.TextInput(
+                placeholder="new tag",
+                style=Pack(padding=(0,18,0), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+            
+            async def ranking_replace_tag_check(widget):
+                if old := old_tag.value.strip():
+                    old = titlecase(old)
+                    new = new_tag.value.strip()
+                    new = titlecase(new) if new else None
+                    if "," in old or (new and "," in new):
+                        await self.dialog(toga.InfoDialog("Error", "You can specify only one tag per tag input."))
+                    else:
+                        old_tag.value = new_tag.value = ""
+                        await self.rankings.replace_entries_tag_dialog(entry_type.value.lower(), old, new)
+
+            replace_tag_button = toga.Button(
+                "Replace tag", on_press=ranking_replace_tag_check, 
+                style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
+            
             reset_ranking_button = toga.Button(
                 "Reset ranking database", on_press=self.rankings.reset_ranking_dialog, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
+            
+            general_label = toga.Label(
+                "General", 
+                style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
             backup_databases_button = toga.Button(
                 "Back up databases", on_press=self.backup_databases, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
             restore_databases_button = toga.Button(
                 "Restore databases", on_press=self.restore_databases, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
+            
             box = toga.Box(
                 children=[
-                    reset_todo_button, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    reset_habit_button, reset_today_habit_records_button, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    reset_journal_button, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    reset_ranking_button, toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    backup_databases_button, restore_databases_button
+                    todo_label, s_div[0], reset_todo_button, div[0],
+                    habit_label, s_div[1], reset_today_habit_records_button, s_div[2], reset_habit_button, div[1],
+                    journal_label, s_div[3], reset_journal_button, div[2],
+                    ranking_label, s_div[4], type_box, old_tag, new_tag, replace_tag_button, s_div[5], reset_ranking_button, div[3],
+                    general_label, s_div[6], backup_databases_button, s_div[7], restore_databases_button
                 ], 
                 style=Pack(direction=COLUMN, background_color="#393432"))
             self.settings_box = toga.ScrollContainer(content=box)
@@ -210,11 +270,11 @@ class Imerisios(toga.App):
     async def day_change(self):
         if self.today != date.today():
             self.today = date.today()
-            self.todo.update_todo()
-            self.habits.update_habit(details=False, tracking=False)
-            self.journal.update_journal()
+            self.todo.update_todo(True)
+            self.habits.update_habit(True, details=False, tracking=False)
+            self.journal.update_journal(True)
 
-            await self.app.dialog(toga.InfoDialog("Day Change", "Everything related to day change has been updated successfully. You may need to relaunch the app."))
+            await self.app.dialog(toga.InfoDialog("Day Change", "Everything related to day change has been updated successfully. You may need to go back to menu for UI update."))
             
     
     def day_change_sync_wrapper(self):
@@ -487,7 +547,7 @@ class Imerisios(toga.App):
             for i in range(len(db_names)):
                 backup_database(db_paths[i], backup_paths[i])
 
-            await self.app.dialog(toga.InfoDialog("Success", f"The databases were successfully backed up to {backup_folder}"))
+            await self.app.dialog(toga.InfoDialog("Success", f"The databases were backed up to {backup_folder} successfully."))
 
     
     async def restore_databases(self, widget):
@@ -535,7 +595,7 @@ class Imerisios(toga.App):
             rankings = "ranking.db" in restored
             self.setup_ui(todo=todo, habits=habits, journal=journal, rankings=rankings)
 
-            await self.app.dialog(toga.InfoDialog("Success", f"Databases {restored} were successfully restored."))
+            await self.app.dialog(toga.InfoDialog("Success", f"Databases {restored} were restored successfully."))
 
         
 def main():

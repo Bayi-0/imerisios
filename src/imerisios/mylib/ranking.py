@@ -7,6 +7,7 @@ from datetime import date
 from titlecase import titlecase
 from nameparser import HumanName
 
+
 class Rankings:
     def __init__(self, app, db_path):
         self.app = app
@@ -1085,13 +1086,23 @@ class Rankings:
                 await self.app.dialog(toga.InfoDialog("Error", "Title must be specified."))
                 return 0
 
-        person_value = self.add_person.value
-        person = [p.strip() for p in person_value.split(",")]
+        person_value = self.add_person.value.strip()
         if t == "music":   
             if not person_value:
                 await self.app.dialog(toga.InfoDialog("Error", "Artist must be specified."))
                 return 0
             if self.add_switch.value:
+                person = HumanName(person_value)
+                person.capitalize(force=True)
+                person= str(person)
+                person = person[0].upper() + person[1:]
+
+            else:
+                person = person_value
+
+        else:
+            person = [p.strip() for p in person_value.split(",") if p.strip()] if person_value else None
+            if person:
                 for i in range(len(person)):
                     person[i] = HumanName(person[i])
                     person[i].capitalize(force=True)
@@ -1100,28 +1111,17 @@ class Rankings:
 
                 person = ", ".join(sorted(person))
 
-            else:
-                person = ", ".join(person)
-
-        else:
-            if person:
-                for i in range(len(person)):
-                    person[i] = HumanName(person[i])
-                    person[i].capitalize(force=True)
-                    person[i] = str(person[i])
-
-                person = ", ".join(sorted(person))
-
             if t == "movie" or t == "series":
-                stars_value = self.add_stars.value
-                stars = [p.strip() for p in stars_value.split(",")]
+                stars_value = self.add_stars.value.strip()
+                stars = [p.strip() for p in stars_value.split(",") if p.strip()] if stars_value else None
+                if stars_value:
+                    for i in range(len(stars)):
+                        stars[i] = HumanName(stars[i])
+                        stars[i].capitalize(force=True)
+                        stars[i] = str(stars[i])
+                        stars[i] = stars[i][0].upper() + stars[i][1:]
 
-                for i in range(len(stars)):
-                    stars[i] = HumanName(stars[i])
-                    stars[i].capitalize(force=True)
-                    stars[i] = str(stars[i])
-
-                stars = ", ".join(sorted(stars))
+                    stars = ", ".join(sorted(stars))
         
         tags = self.get_tags(self.add_tags.value)
 
@@ -1186,7 +1186,7 @@ class Rankings:
 
 
     async def remove_entry_dialog(self, widget):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Art thou certain thou wishest to remove the entry?"))
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you wish to remove the entry?"))
         if result:
             await self.remove_entry()
 
@@ -1218,7 +1218,7 @@ class Rankings:
         
 
     async def save_entry_dialog(self, widget):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Art thou certain thou wishest to save the entry?"))
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you wish to save the entry?"))
         if result:
             await self.save_entry()
 
@@ -1243,40 +1243,42 @@ class Rankings:
                 await self.app.dialog(toga.InfoDialog("Error", "Title must be specified."))
                 return 0
 
-        person = [p.strip() for p in self.edit_person.value.split(",")]
+        person_value = self.edit_person.value.strip()
         if t == "music":
             if not person:
                 await self.app.dialog(toga.InfoDialog("Error", "Artist must be specified."))
                 return 0
             else:
                 if self.edit_switch.value:
-                    for i in range(len(person)):
-                        person[i] = HumanName(person[i])
-                        person[i].capitalize(force=True)
-                        person[i] = str(person[i])
-                        person[i] = person[i][0].upper() + person[i][1:]
-                    person = ", ".join(sorted(person))
+                    person = HumanName(person_value)
+                    person.capitalize(force=True)
+                    person= str(person)
+                    person = person[0].upper() + person[1:]
+
                 else:
-                    person = ", ".join(person)
+                    person = person_value
         else:
+            person = [p.strip() for p in person_value.split(",") if p.strip()] if person_value else None
             if person:
                 for i in range(len(person)):
                     person[i] = HumanName(person[i])
                     person[i].capitalize(force=True)
                     person[i] = str(person[i])
+                    person[i] = person[i][0].upper() + person[i][1:]
 
                 person = ", ".join(sorted(person))
 
             if t == "movie" or t == "series":
-                stars_value = self.edit_stars.value
-                stars = [p.strip() for p in stars_value.split(",")]
+                stars_value = self.edit_stars.value.strip()
+                stars = [p.strip() for p in stars_value.split(",") if p.strip()] if stars_value else None
+                if stars:
+                    for i in range(len(stars)):
+                        stars[i] = HumanName(stars[i])
+                        stars[i].capitalize(force=True)
+                        stars[i] = str(stars[i])
+                        stars[i] = stars[i][0].upper() + stars[i][1:]
 
-                for i in range(len(stars)):
-                    stars[i] = HumanName(stars[i])
-                    stars[i].capitalize(force=True)
-                    stars[i] = str(stars[i])
-
-                stars = ", ".join(sorted(stars))
+                    stars = ", ".join(sorted(stars))
         
         tags = self.get_tags(self.edit_tags.value)
 
@@ -1543,8 +1545,8 @@ class Rankings:
         tags_include = self.sort_tags_include.value
         tags_exclude = self.sort_tags_exclude.value
 
-        temp_include = set(tag.strip().lower() for tag in tags_include.split(","))
-        temp_exclude = set(tag.strip().lower() for tag in tags_exclude.split(","))
+        temp_include = set(tag.strip().lower() for tag in tags_include.split(",") if tag.strip())
+        temp_exclude = set(tag.strip().lower() for tag in tags_exclude.split(",") if tag.strip())
         
         if tags_include and tags_exclude:
             if temp_include & temp_exclude:
@@ -1566,7 +1568,7 @@ class Rankings:
 
         if t != "music":
             if (person := self.sort_person.value):
-                filtering.append((self.type_to_person[t], set(p.strip().lower() for p in person.split(","))))
+                filtering.append((self.type_to_person[t], set(p.strip().lower() for p in person.split(",") if p.strip())))
             
             start_year = self.sort_start_years[0].value
             end_year = self.sort_start_years[1].value
@@ -1587,7 +1589,7 @@ class Rankings:
 
             if t != "book":
                 if (stars := self.sort_stars.value):
-                    filtering.append(("stars", set(p.strip().lower() for p in stars.split(","))))
+                    filtering.append(("stars", set(p.strip().lower() for p in stars.split(",") if p.strip())))
                 self.data["filtering"][t]["stars"] = stars
 
         self.data["filtering"][t]["tags_include"] = tags_include
@@ -1750,7 +1752,7 @@ class Rankings:
 
         self.app.setup_ui(rankings=True)
 
-        await self.app.dialog(toga.InfoDialog("Success", "Rankings database was successfully reset."))
+        await self.app.dialog(toga.InfoDialog("Success", "Rankings database was reset successfully."))
 
     
     def get_tags(self, value):
@@ -1760,11 +1762,56 @@ class Rankings:
 
         for tag in values:
             t = tag.strip()
-            if t.lower() not in added:
-                added.add(t.lower())
-                tags.append(t)
+            if t:
+                if t.lower() not in added:
+                    added.add(t.lower())
+                    tags.append(t)
 
         tags = titlecase(", ".join(tags))
         tags = titlecase(", ".join(sorted(tags.split(", "))))
         
         return tags
+
+
+    async def replace_entries_tag_dialog(self, entry_type, old, new):
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you wish to replace the tag in all entries of the type?"))
+        if result:
+            await self.replace_entries_tag(entry_type, old, new)
+
+
+    async def replace_entries_tag(self, entry_type, old, new):
+        con, cur = get_connection(self.db_path)
+
+        query = f"""
+            SELECT id, tags FROM {entry_type}_entries
+            WHERE LOWER(tags) LIKE LOWER(?);
+        """
+        cur.execute(query, (f"%{old}%",))
+
+        entries = cur.fetchall()
+        if entries:
+            new_entries = []
+            for e in entries:
+                id = e[0]
+                old_tags = e[1].split(", ")
+
+                new_tags = [t for t in old_tags if t.lower() != old.lower()]
+                if new and new not in new_tags:
+                    new_tags = sorted(new_tags+[new,])
+                new_tags = ", ".join(new_tags)
+
+                new_entries.append((id, new_tags))
+            
+            query_start = f"UPDATE {entry_type}_entries"
+            for id, tags in new_entries:
+                cur.execute(query_start+" SET tags = ? WHERE id = ?", (tags, id,))
+            con.commit()
+
+            await self.app.dialog(toga.InfoDialog("Success", f"{len(new_entries)} entries' tags were updated successfully."))
+
+            self.app.setup_rankings = True
+
+        else:
+            await self.app.dialog(toga.InfoDialog("Error", "There is not an entry with the old tag existing."))
+        
+        con.close()

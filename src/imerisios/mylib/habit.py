@@ -6,6 +6,7 @@ import sqlite3 as sql
 from collections import defaultdict
 from imerisios.mylib.tools import length_check, get_connection, close_connection, create_calendar_image, get_month_dicts
 
+
 class Habits:
     def __init__(self, app, db_path, img_path):
         self.app = app 
@@ -173,25 +174,28 @@ class Habits:
         """)
         con.commit()
 
-        self.update_habit((con, cur))
+        self.update_habit(con_cur=(con, cur))
 
         con.close()
 
         return habit_tracker_box, habit_details_box, add_habit_box, habit_more_box
     
 
-    def update_habit(self, details=True, tracking=True, con_cur=None):
+    def update_habit(self, day_change=False, details=True, tracking=True, con_cur=None):
         con, cur = get_connection(self.db_path, con_cur)
 
         self.add_habit_records(False, (con, cur))
         self.remove_habit_records((con, cur))
-        self.habit_get_data(details=details, tracking=tracking, con_cur=(con, cur))
-        
-        self.load_habits(None, False, details)
+        if day_change:
+            self.app.setup_habits = True
+        else:
+            self.habit_get_data(details=details, tracking=tracking, con_cur=(con, cur))
+            
+            self.load_habits(None, False, details)
 
-        date_w = self.habit_tracker_date
-        date_w.max = date_w.value = date.today()
-        date_w.min = date.today() - timedelta(days=6)
+            date_w = self.habit_tracker_date
+            date_w.max = date_w.value = date.today()
+            date_w.min = date.today() - timedelta(days=6)
 
         close_connection(con, con_cur)
     
@@ -537,7 +541,7 @@ class Habits:
                 id="habit_rename input 34",
                 on_change=length_check,
                 placeholder="new name for the habit", 
-                style=Pack(padding=(8,18,0), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+                style=Pack(padding=(8,11,0), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
             self.widgets["habit_more rename button"] =toga.Button(
                 "Rename", on_press=self.rename_habit_dialog, 
                 style=Pack(flex=0.5, height=120, padding=(0,11), font_size=24, color="#EBF6F7", background_color="#27221F"))
@@ -943,7 +947,7 @@ class Habits:
         
         self.app.setup_ui(habits=True)
 
-        await self.app.dialog(toga.InfoDialog("Success", "Habits database was successfully reset."))
+        await self.app.dialog(toga.InfoDialog("Success", "Habits database was reset successfully."))
 
     
     async def reset_today_habit_records(self, widget):

@@ -5,6 +5,7 @@ from datetime import date, timedelta
 import sqlite3 as sql
 from imerisios.mylib.tools import length_check, get_connection, close_connection, get_ranges
 
+
 class ToDo:
     def __init__(self, app, db_path):
         self.app = app
@@ -70,7 +71,7 @@ class ToDo:
             "Reset type & date", 
             id="add task reset",
             on_press=self.reset_type_date, 
-            style=Pack(padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F"))
+            style=Pack(padding=(4,4,14), height=44, font_size=13, color="#EBF6F7", background_color="#27221F"))
         
         top_box = toga.Box(
             children=[
@@ -150,7 +151,7 @@ class ToDo:
             "Reset type & date", 
             id="edit task reset", 
             on_press=self.reset_type_date, 
-            style=Pack(padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F"))
+            style=Pack(padding=(4,4,14), height=44, font_size=13, color="#EBF6F7", background_color="#27221F"))
 
         top_box = self.box = toga.Box(
             children=[
@@ -479,7 +480,7 @@ class ToDo:
         """)
         con.commit()
 
-        self.update_todo(False, (con, cur))
+        self.update_todo(load=False, con_cur=(con, cur))
         self.load_tasks(types=["daily", "weekly", "monthly", "yearly"], con_cur=(con, cur))
 
         con.close()
@@ -487,7 +488,7 @@ class ToDo:
         return list_box, history_box, add_box, edit_box
 
 
-    def update_todo(self, load=True, con_cur=None):
+    def update_todo(self, day_change=False, load=True, con_cur=None):
         weekdays_left = 7 - date.today().isocalendar().weekday if date.today().isocalendar().weekday != 7 else 7
         weekly_max_date = date.today()+timedelta(days=weekdays_left)
         monthly_max_date = (date((weekly_max_date+timedelta(days=1)).year, weekly_max_date.month+1, 1) - timedelta(days=1))
@@ -501,7 +502,12 @@ class ToDo:
             "monthly": (weekly_max_date+timedelta(days=1), monthly_max_date),
             "yearly": (monthly_max_date+timedelta(days=1), yearly_max_date)}
         
+        if day_change:
+            self.app.setup_todo = True
+            load = False
+
         self.update_task_types(load, con_cur)
+
 
     
     def todo_get_data(self, types: list=[], tiers: list=[], con_cur=None):
@@ -812,7 +818,7 @@ class ToDo:
 
         self.app.setup_ui(todo=True)
         
-        await self.app.dialog(toga.InfoDialog("Success", "To-Do database was successfully reset."))
+        await self.app.dialog(toga.InfoDialog("Success", "To-Do database was reset successfully."))
 
 
     def task_type_change(self, widget):
@@ -965,8 +971,7 @@ class ToDo:
     def reset_type_date(self, widget):
         tab = widget.id.split()[0]
 
-        self.dd_change = False
-        self.tt_change = False
+        self.dd_change = self.tt_change = False
 
         w = self.widgets[f"{tab} task type"]
         w.value = "Daily"
@@ -974,7 +979,7 @@ class ToDo:
         w.refresh()
 
         w = self.widgets[f"{tab} task duedate"]
-        w.min = date.today()
+        w.min = w.value = date.today()
         w.max = self.type_dates_dict["yearly"][1]
         w.refresh()
 

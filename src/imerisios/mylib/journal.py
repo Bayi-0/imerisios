@@ -6,6 +6,7 @@ import sqlite3 as sql
 from collections import defaultdict
 from imerisios.mylib.tools import length_check, get_connection, close_connection, get_month_dicts
 
+
 class Journal:
     def __init__(self, app, db_path):
         self.app = app
@@ -290,22 +291,25 @@ class Journal:
         """)
         con.commit()
 
-        self.update_journal(True, (con, cur))
+        self.update_journal(notes=True, con_cur=(con, cur))
 
         con.close()
 
         return journal_box, entries_box, notes_box, note_add_box, note_edit_box
         
 
-    def update_journal(self, notes=False, con_cur=None):
-        con, cur = get_connection(self.db_path, con_cur)
+    def update_journal(self, day_change=False, notes=False, con_cur=None):
+        if day_change:
+            self.app.setup_journal = True
+        else:
+            con, cur = get_connection(self.db_path, con_cur)
 
-        self.journal_get_data(True, True, (con, cur))
-        self.load_entry(None, (con, cur))
-        if notes:
-            self.load_notes(False, (con, cur))
+            self.journal_get_data(True, True, (con, cur))
+            self.load_entry(None, (con, cur))
+            if notes:
+                self.load_notes(False, (con, cur))
 
-        close_connection(con, con_cur)
+            close_connection(con, con_cur)
 
 
     def journal_get_data(self, entries=False, notes=False, con_cur=None):
@@ -599,7 +603,7 @@ class Journal:
 
         self.app.setup_ui(journal=True)
 
-        await self.app.dialog(toga.InfoDialog("Success", "Journal database was successfully reset."))
+        await self.app.dialog(toga.InfoDialog("Success", "Journal database was reset successfully."))
 
 
     def clear_note_add_box(self):

@@ -243,3 +243,23 @@
 
 ### Removed
 - N/A
+
+
+## [v2.4.0] - 2024-11-10
+
+### Added
+- Replace tag in ranking entries function in settings;
+
+### Changed
+- Some design adjustments, including new design for settings;
+- Some dialog messages;
+- The way day_change works.
+
+### Fixed
+- Solved the problem with inability to add/edit ranking entries when author/director/creator/stars were not specified;
+- Fixed formatting for cases when there was an extra comma etc. in input in add/edit entry;
+- Fixed artist being split by comma and formatted like many objects ranking issue;
+- Fixed date resetting in task add/edit.
+
+### Removed
+- N/A

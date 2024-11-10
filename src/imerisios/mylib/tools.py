@@ -5,6 +5,7 @@ import PIL
 import calendar
 from PIL import Image, ImageDraw, ImageFont
 
+
 def length_check(widget):
     length = int(widget.id.split()[2])
     if len(widget.value) > length:
