@@ -25,7 +25,9 @@ class Imerisios(toga.App):
         self.app_dir = self.paths.data
         if not os.path.exists(self.app_dir):
             os.makedirs(self.app_dir)
-            
+
+        self.widgets_dict = {}
+
         # today date 
         self.today = date.today()
 
@@ -171,39 +173,84 @@ class Imerisios(toga.App):
 
         # settings
         if settings:
-            self.setup_ui(todo=self.setup_todo, habits=self.setup_habits, journal=self.setup_journal, rankings=self.setup_rankings)
+            ## todo
+            async def reset_todo_dialog(widget):
+                self.setup_ui(todo=self.setup_todo)
+                await self.todo.reset_todo_dialog()
 
-            s_div = [toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")) for _ in range(8)] 
-            div = [toga.Divider(style=Pack(background_color="#27221F")) for _ in range(4)]
 
-            # todo
             todo_label = toga.Label(
                 "To-Do", 
                 style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
             reset_todo_button = toga.Button(
-                "Reset todo database", on_press=self.todo.reset_todo_dialog, 
+                "Reset todo database", on_press=reset_todo_dialog, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
             
-            # habit
+            ## habits
+            async def reset_habit_records_dialog(widget):
+                self.setup_ui(habits=self.setup_habits)
+                await self.habits.reset_habit_records_dialog()
+
+            async def add_last_week_records_dialog(widget):
+                self.setup_ui(habits=self.setup_habits)
+                await self.habits.add_last_week_records_dialog()
+
+            async def reset_habit_dialog(widget):
+                self.setup_ui(habits=self.setup_habits)
+                await self.habits.reset_habit_dialog()
+
+
             habit_label = toga.Label(
                 "Habits", 
                 style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
             reset_today_habit_records_button = toga.Button(
-                "Reset today's habit records", on_press=self.habits.reset_today_habit_records, 
+                "Reset today's habit records", on_press=reset_habit_records_dialog, 
+                style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
+            add_last_week_records_button = toga.Button(
+                "Add last week's habit records", on_press=add_last_week_records_dialog, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
             reset_habit_button = toga.Button(
-                "Reset habit database", on_press=self.habits.reset_habit_dialog, 
+                "Reset habit database", on_press=reset_habit_dialog, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
             
-            # journal
+            ## journal
+            async def remove_journal_entry_dialog(widget):
+                self.setup_ui(journal=self.setup_journal)
+                await self.journal.remove_entry_dialog(self.widgets_dict["settings journal_remove date"].value)
+
+            async def reset_journal_dialog(widget):
+                self.setup_ui(journal=self.setup_journal)
+                await self.journal.reset_journal_dialog()
+
+
             journal_label = toga.Label(
                 "Journal", 
                 style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
+            
+            journal_remove_date_label = toga.Label(
+                "Date:", 
+                style=Pack(padding=(10,20), font_size=16, color="#EBF6F7"))
+            journal_remove_date = toga.DateInput(
+                min=date(2024, 7, 15),
+                max=self.today,
+                style=Pack(padding=(0,20), width=200, color="#EBF6F7"))
+            self.widgets_dict["settings journal_remove date"] = journal_remove_date
+            journal_remove_date_box = toga.Box(
+                children=[journal_remove_date_label, journal_remove_date], 
+                style=Pack(direction=ROW))
+            journal_remove_button = toga.Button(
+                "Remove journal entry", on_press=remove_journal_entry_dialog, 
+                style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
+
             reset_journal_button = toga.Button(
-                "Reset journal database", on_press=self.journal.reset_journal_dialog, 
+                "Reset journal database", on_press=reset_journal_dialog, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
             
-            # ranking
+            ## ranking
+            async def reset_ranking_dialog(widget):
+                self.setup_ui(rankings=self.setup_rankings)
+                await self.rankings.reset_ranking_dialog()
+
             ranking_label = toga.Label(
                 "Rankings", 
                 style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
@@ -212,7 +259,7 @@ class Imerisios(toga.App):
                 "Type:", 
                 style=Pack(padding=(6,18,0), font_size=16, color="#EBF6F7"))
             entry_type = toga.Selection(
-                items=[t.capitalize() for t in self.rankings.ranking_types],
+                items=[t.capitalize() for t in ("book", "movie", "series", "music")],
                 style=Pack(padding=(0,18), height=44, flex=0.8))
             type_box = toga.Box(
                 children=[type_label, entry_type],
@@ -233,6 +280,8 @@ class Imerisios(toga.App):
                         await self.dialog(toga.InfoDialog("Error", "You can specify only one tag per tag input."))
                     else:
                         old_tag.value = new_tag.value = ""
+
+                        self.setup_ui(rankings=self.setup_rankings)
                         await self.rankings.replace_entries_tag_dialog(entry_type.value.lower(), old, new)
 
             replace_tag_button = toga.Button(
@@ -240,7 +289,7 @@ class Imerisios(toga.App):
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
             
             reset_ranking_button = toga.Button(
-                "Reset ranking database", on_press=self.rankings.reset_ranking_dialog, 
+                "Reset ranking database", on_press=reset_ranking_dialog, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
             
             general_label = toga.Label(
@@ -253,11 +302,14 @@ class Imerisios(toga.App):
                 "Restore databases", on_press=self.restore_databases, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
             
+            s_div = [toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")) for _ in range(10)] 
+            div = [toga.Divider(style=Pack(background_color="#27221F")) for _ in range(4)]
+
             box = toga.Box(
                 children=[
                     todo_label, s_div[0], reset_todo_button, div[0],
-                    habit_label, s_div[1], reset_today_habit_records_button, s_div[2], reset_habit_button, div[1],
-                    journal_label, s_div[3], reset_journal_button, div[2],
+                    habit_label, s_div[1], reset_today_habit_records_button, s_div[2], add_last_week_records_button, s_div[8], reset_habit_button, div[1],
+                    journal_label, s_div[3], journal_remove_date_box, journal_remove_button, s_div[9], reset_journal_button, div[2],
                     ranking_label, s_div[4], type_box, old_tag, new_tag, replace_tag_button, s_div[5], reset_ranking_button, div[3],
                     general_label, s_div[6], backup_databases_button, s_div[7], restore_databases_button
                 ], 
@@ -270,9 +322,12 @@ class Imerisios(toga.App):
     async def day_change(self):
         if self.today != date.today():
             self.today = date.today()
+
             self.todo.update_todo(True)
             self.habits.update_habit(True, details=False, tracking=False)
             self.journal.update_journal(True)
+            if not self.setup_settings:
+                self.widgets["settings journal_remove date"].max = self.today()
 
             await self.app.dialog(toga.InfoDialog("Day Change", "Everything related to day change has been updated successfully. You may need to go back to menu for UI update."))
             
@@ -345,7 +400,7 @@ class Imerisios(toga.App):
     def open_habit_tracker(self, widget):
         self.setup_ui(habits=self.setup_habits)
 
-        self.habits.habit_tracker_list_container.position = toga.Position(0,0)
+        self.habits.tracker_list_container.position = toga.Position(0,0)
         self.main_window.content = self.habit_tracker_box
 
         self.enable_commands()
@@ -355,7 +410,13 @@ class Imerisios(toga.App):
     def open_habit_details(self, widget):
         self.setup_ui(habits=self.setup_habits)
         
-        self.habits.habit_details_list_container.position = toga.Position(0,0)
+        if self.habits.details_setup:
+            self.habits.habit_get_data(details=True)
+            self.habits.load_habits(None, tracker=False, details=True)
+            self.habits.details_setup = False
+        self.habits.details_tracked_container.position = toga.Position(0,0)
+        self.habits.details_untracked_container.position = toga.Position(0,0)
+        self.habit_details_box.current_tab = "Tracked"
         self.main_window.content = self.habit_details_box
 
         self.enable_commands()
@@ -407,6 +468,8 @@ class Imerisios(toga.App):
 
     def open_add_note(self, widget):
         self.setup_ui(journal=self.setup_journal)
+
+        self.journal.clear_note_add_box()
 
         self.main_window.content = self.journal_notes_add_box
         self.build_toolbar([(self.menu_command, True), (self.notes_command, True), (self.add_note_command, False)])
@@ -537,7 +600,7 @@ class Imerisios(toga.App):
                 con = sql.connect(db_path)
                 with open(backup_path, 'w') as f:
                     for line in con.iterdump():
-                        f.write('%s\n' % line)
+                        f.write(f"{line}\n")
                 con.close()
 
             db_names = ["todo", "habit", "journal", "ranking"]
@@ -562,19 +625,22 @@ class Imerisios(toga.App):
             def restore_database(backup_path, db_path):
                 with open(backup_path, 'r') as f:
                     sql_script = f.read()
+
                 statements = sql_script.split(';')
+                statements = [stmt.strip() for stmt in statements if stmt.strip()]
 
                 if os.path.exists(db_path):
                     os.remove(db_path)
+
                 con = sql.connect(db_path)
 
                 for statement in statements:
-                    if statement.strip():
+                    if statement:
                         try:
+                            print(f"Executing: {statement[:50]}...") 
                             con.execute(statement)
                         except Exception as e:
                             print(f"Error executing statement: {e}")
-                con.close()
 
             db_names = ["todo", "habit", "journal", "ranking"]
             db_paths = [os.path.join(self.app_dir, db+".db") for db in db_names]
@@ -589,14 +655,15 @@ class Imerisios(toga.App):
 
             restored = [db+".db" for db in restored]
 
-            todo = "todo.db" in restored
-            habits = "habit.db" in restored 
-            journal = "journal.db" in restored
-            rankings = "ranking.db" in restored
-            self.setup_ui(todo=todo, habits=habits, journal=journal, rankings=rankings)
+            self.setup_todo = "todo.db" in restored
+            self.setup_habits = "habit.db" in restored 
+            self.setup_journal = "journal.db" in restored
+            self.setup_rankings = "ranking.db" in restored
 
-            await self.app.dialog(toga.InfoDialog("Success", f"Databases {restored} were restored successfully."))
+            start = "Database"
+            start += f"s {restored} have" if len(restored) > 1 else f" {restored} has" 
+            await self.app.dialog(toga.InfoDialog("Success", f"{start} been restored successfully."))
 
-        
+
 def main():
     return Imerisios()

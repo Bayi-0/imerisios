@@ -12,7 +12,7 @@ class Journal:
         self.app = app
         self.db_path = db_path
 
-        self.widgets = {}
+        self.widgets_dict = {}
         self.data = {"entries": {}}
         self.data["entry quotes"] = [
             "“The world changes, and all that once was strong now proves unsure.”", "— Théoden, The Lord of the Rings by J.R.R. Tolkien", 
@@ -128,7 +128,7 @@ class Journal:
             children=[date_selection_box, today_button],
             style=Pack(direction=COLUMN))
 
-        self.journal_entries_input = toga.MultilineTextInput(placeholder="thy entry", style=Pack(flex=0.6, padding=(0,11), font_size=12, color="#EBF6F7", background_color="#27221F"))
+        self.journal_entries_input = toga.MultilineTextInput(placeholder="your entry", style=Pack(flex=0.6, padding=(0,11), font_size=12, color="#EBF6F7", background_color="#27221F"))
 
         self.journal_entries_save_button = toga.Button(
             "Save", on_press=self.save_entry_dialog, 
@@ -171,9 +171,10 @@ class Journal:
             style=Pack(flex=0.09, padding=14, text_align="center", font_weight="bold", font_size=18, color="#EBF6F7"))
         
         title_label = toga.Label(
-            "Title (no more than 34 characters):", 
+            "Title:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
         self.journal_notes_add_title_input = toga.TextInput(
+            placeholder="(no more than 34 characters)",
             id="note_add_title input 34",
             on_change=length_check, 
             style=Pack(padding=(0,11,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
@@ -213,9 +214,10 @@ class Journal:
             style=Pack(flex=0.09, padding=14, text_align="center", font_weight="bold", font_size=18, color="#EBF6F7"))
         
         title_label = toga.Label(
-            "Title (no more than 34 characters):", 
+            "Title:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
         self.journal_notes_edit_title_input = toga.TextInput(
+            placeholder="(no more than 34 characters)",
             id="note_edit_title input 34",
             on_change=length_check, 
             style=Pack(padding=(0,11,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
@@ -411,7 +413,7 @@ class Journal:
                     else:
                         input.readonly = True
 
-                        if "entry quote" not in self.widgets:
+                        if "entry quote" not in self.widgets_dict:
                             quotes = self.data["entry quotes"]
                             box = toga.Box(style=Pack(direction=COLUMN))
                             for i in range(0, len(quotes)-1, 2):
@@ -419,8 +421,8 @@ class Journal:
                                 box.add(
                                     toga.Label(quotes[i+1], 
                                     style=Pack(padding=(0,4,4), text_align="right", font_size=7, font_style="italic", color="#EBF6F7")))
-                            self.widgets["entry quote"] = box
-                        button_box.add(self.widgets["entry quote"])
+                            self.widgets_dict["entry quote"] = box
+                        button_box.add(self.widgets_dict["entry quote"])
                     
                     if content:
                         input.value = content[0]
@@ -431,7 +433,7 @@ class Journal:
     async def save_entry_dialog(self, widget):
         content = self.journal_entries_input.value
         if content:
-            result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Art thou certain thou wishest to save the entry?"))
+            result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to save the entry?"))
             if result:
                 await self.save_entry(content)
 
@@ -470,15 +472,15 @@ class Journal:
         else:
             for n in self.data["notes"]:
                 b_id = f"{n[0]} note button"
-                if b_id not in self.widgets:
-                    self.widgets[b_id] = toga.Button(
+                if b_id not in self.widgets_dict:
+                    self.widgets_dict[b_id] = toga.Button(
                         f"{n[1]}", id=b_id, on_press=self.app.open_edit_note, 
                         style=Pack(flex=0.1, height=80, font_size=12, color="#EBF6F7", background_color="#27221F"))
                 else: 
-                    self.widgets[b_id].text = n[1]
+                    self.widgets_dict[b_id].text = n[1]
                     
                 note_box.add(
-                    toga.Box(children=[self.widgets[b_id]], style=Pack(direction=COLUMN)),
+                    toga.Box(children=[self.widgets_dict[b_id]], style=Pack(direction=COLUMN)),
                     toga.Divider(style=Pack(background_color="#27221F")))    
                 
 
@@ -507,7 +509,7 @@ class Journal:
         content = self.journal_notes_edit_content_input.value
 
         if content and title:
-            result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Art thou certain thou wishest to save the note?"))
+            result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to save the note?"))
             if result:
                 await self.save_note(title, content)
 
@@ -525,8 +527,8 @@ class Journal:
         con.commit()
 
         button_id = f"{id} note button"
-        if button_id in self.widgets:
-            del self.widgets[button_id]
+        if button_id in self.widgets_dict:
+            del self.widgets_dict[button_id]
 
         self.load_notes(con_cur=(con, cur))
     
@@ -534,7 +536,7 @@ class Journal:
 
 
     async def remove_note_dialog(self, widget):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Art thou certain thou wishest to remove the note?"))
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to remove the note?"))
         if result:
             await self.remove_note()
 
@@ -549,8 +551,8 @@ class Journal:
         con.commit()
 
         button_id = f"{id} note button"
-        if button_id in self.widgets:
-            del self.widgets[button_id]
+        if button_id in self.widgets_dict:
+            del self.widgets_dict[button_id]
 
         self.load_notes(con_cur=(con, cur))
 
@@ -559,8 +561,8 @@ class Journal:
         self.app.open_journal_notes(None)
 
 
-    async def reset_journal_dialog(self, widget):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you wish to reset Journal database?"))
+    async def reset_journal_dialog(self):
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to reset Journal database?"))
         if result:
             await self.reset_journal()
 
@@ -603,7 +605,7 @@ class Journal:
 
         self.app.setup_ui(journal=True)
 
-        await self.app.dialog(toga.InfoDialog("Success", "Journal database was reset successfully."))
+        await self.app.dialog(toga.InfoDialog("Success", "Journal database has been reset successfully."))
 
 
     def clear_note_add_box(self):
@@ -621,3 +623,26 @@ class Journal:
 
         self.journal_notes_edit_title_input.value = title
         self.journal_notes_edit_content_input.value = content
+    
+    
+    async def remove_entry_dialog(self, entry_date):
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", f"Are you sure you want to remove the entry for {entry_date.isoformat()}?"))
+        if result:
+            await self.remove_entry(entry_date)
+
+    
+    async def remove_entry(self, entry_date):
+        con, cur = get_connection(self.db_path)
+
+        cur.execute("SELECT id FROM entries WHERE date = ?", (entry_date,))
+
+        if id := cur.fetchone():
+            cur.execute("DELETE FROM entries WHERE id = ?", id)
+            con.commit()
+
+            self.entry_today(None)  
+            self.journal_entries_input.value = ""
+
+            await self.app.dialog(toga.InfoDialog("Success", "The entry has been removed successfully."))
+        else:
+            await self.app.dialog(toga.InfoDialog("Error", "No entry found for the selected date."))

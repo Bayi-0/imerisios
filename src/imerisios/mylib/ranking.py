@@ -2,7 +2,7 @@ import toga
 from toga.style import Pack
 from toga.constants import COLUMN, ROW
 import sqlite3 as sql
-from imerisios.mylib.tools import length_check, get_connection, close_connection, get_ranges
+from imerisios.mylib.tools import length_check, get_connection, close_connection, get_ranges, change_range, set_range
 from datetime import date
 from titlecase import titlecase
 from nameparser import HumanName
@@ -15,7 +15,7 @@ class Rankings:
 
         self.ranking_types = ["book", "movie", "series", "music"]
         self.data = {"rankings": {}}
-        self.widgets = {"entries": {t:{} for t in self.ranking_types}}
+        self.widgets_dict = {"entries": {t:{} for t in self.ranking_types}}
         self.type_to_person = {"book": "author", "movie": "director", "series": "creator", "music": "artist"}
         self.int_to_grade = {6: 'S', 5: 'A', 4: 'B', 3: 'C', 2: 'D', 1: 'E'}
         self.grade_to_int = {v: k for k, v in self.int_to_grade.items()}
@@ -47,15 +47,15 @@ class Rankings:
             id="book range", 
             on_change=self.load_rankings,
             style=Pack(flex=0.6, padding=4, height=44))
-        self.widgets["book range"] = self.book_range
+        self.widgets_dict["book range"] = self.book_range
         book_range_box = toga.Box(
             children=[back_button, self.book_range, next_button],
             style=Pack(direction=ROW))
         
         book_ranking_box = toga.Box(id="book ranking box", style=Pack(direction=COLUMN))
-        self.widgets["book ranking box"] = book_ranking_box
+        self.widgets_dict["book ranking box"] = book_ranking_box
         book_ranking_container = toga.ScrollContainer(content=book_ranking_box, horizontal=False, style=Pack(flex=0.75))
-        self.widgets["book ranking container"] = book_ranking_container
+        self.widgets_dict["book ranking container"] = book_ranking_container
 
         book_box = toga.Box(
             children=[
@@ -92,15 +92,15 @@ class Rankings:
             id="movie range", 
             on_change=self.load_rankings,
             style=Pack(flex=0.6, padding=4, height=44))
-        self.widgets["movie range"] = self.movie_range
+        self.widgets_dict["movie range"] = self.movie_range
         movie_range_box = toga.Box(
             children=[back_button, self.movie_range, next_button],
             style=Pack(direction=ROW))
         
         movie_ranking_box = toga.Box(id="movie ranking box", style=Pack(direction=COLUMN))
-        self.widgets["movie ranking box"] = movie_ranking_box
+        self.widgets_dict["movie ranking box"] = movie_ranking_box
         movie_ranking_container = toga.ScrollContainer(content=movie_ranking_box, horizontal=False, style=Pack(flex=0.75))
-        self.widgets["movie ranking container"] = movie_ranking_container
+        self.widgets_dict["movie ranking container"] = movie_ranking_container
 
         movie_box = toga.Box(
             children=[
@@ -137,15 +137,15 @@ class Rankings:
             id="series range", 
             on_change=self.load_rankings,
             style=Pack(flex=0.6, padding=4, height=44))
-        self.widgets["series range"] = self.series_range
+        self.widgets_dict["series range"] = self.series_range
         series_range_box = toga.Box(
             children=[back_button, self.series_range, next_button],
             style=Pack(direction=ROW))
         
         series_ranking_box = toga.Box(id="series ranking box", style=Pack(direction=COLUMN))
-        self.widgets["series ranking box"] = series_ranking_box
+        self.widgets_dict["series ranking box"] = series_ranking_box
         series_ranking_container = toga.ScrollContainer(content=series_ranking_box, horizontal=False, style=Pack(flex=0.75))
-        self.widgets["series ranking container"] = series_ranking_container
+        self.widgets_dict["series ranking container"] = series_ranking_container
 
         series_box = toga.Box(
             children=[
@@ -182,15 +182,15 @@ class Rankings:
             id="music range", 
             on_change=self.load_rankings,
             style=Pack(flex=0.6, padding=4, height=44))
-        self.widgets["music range"] = self.music_range
+        self.widgets_dict["music range"] = self.music_range
         music_range_box = toga.Box(
             children=[back_button, self.music_range, next_button],
             style=Pack(direction=ROW))
         
         music_ranking_box = toga.Box(id="music ranking box", style=Pack(direction=COLUMN))
-        self.widgets["music ranking box"] = music_ranking_box
+        self.widgets_dict["music ranking box"] = music_ranking_box
         music_ranking_container = toga.ScrollContainer(content=music_ranking_box, horizontal=False, style=Pack(flex=0.75))
-        self.widgets["music ranking container"] = music_ranking_container
+        self.widgets_dict["music ranking container"] = music_ranking_container
 
         music_box = toga.Box(
             children=[
@@ -240,46 +240,46 @@ class Rankings:
         title_label = toga.Label(
             "Title:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["add title label"] = title_label
+        self.widgets_dict["add title label"] = title_label
         self.add_title = toga.TextInput(style=Pack(padding=(0,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["add title"] = self.add_title
+        self.widgets_dict["add title"] = self.add_title
 
         self.add_switch = toga.Switch(
             text="Autoformat",
             id="add switch",
             value=True, 
             style=Pack(padding=(8,18,18), font_size=12, color="#EBF6F7"))
-        self.widgets["add switch"] = self.add_switch
+        self.widgets_dict["add switch"] = self.add_switch
         
         ## author/director/creator/artist (person)
         author_label = toga.Label(
             "Author:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["add book_person label"] = author_label
+        self.widgets_dict["add book_person label"] = author_label
         director_label = toga.Label(
             "Director:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["add movie_person label"] = director_label
+        self.widgets_dict["add movie_person label"] = director_label
         creator_label = toga.Label(
             "Creator:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["add series_person label"] = creator_label
+        self.widgets_dict["add series_person label"] = creator_label
         artist_label = toga.Label(
             "Artist:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["add music_person label"] = artist_label
+        self.widgets_dict["add music_person label"] = artist_label
         
         self.add_person = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["add person"] = self.add_person
+        self.widgets_dict["add person"] = self.add_person
 
         ## stars
         stars_label = toga.Label(
             "Stars:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["add stars label"] = stars_label
+        self.widgets_dict["add stars label"] = stars_label
         
         self.add_stars = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["add stars"] = self.add_stars
+        self.widgets_dict["add stars"] = self.add_stars
 
         ## years
         start_year_label = toga.Label(
@@ -291,7 +291,7 @@ class Rankings:
             min=-2601, max=date.today().year,
             on_change=self.start_year_change, 
             style=Pack(padding=(0,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["add start_year"] = self.add_start_year
+        self.widgets_dict["add start_year"] = self.add_start_year
         
         end_year_label = toga.Label(
             "End Year:", 
@@ -299,9 +299,9 @@ class Rankings:
         self.add_end_year = toga.NumberInput(
             step=1, max=date.today().year,
             style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["add end_year"] = self.add_end_year
+        self.widgets_dict["add end_year"] = self.add_end_year
         
-        self.widgets["add year box"] = toga.Box(
+        self.widgets_dict["add year box"] = toga.Box(
             children=[start_year_label, self.add_start_year, end_year_label, self.add_end_year],
             style=Pack(direction=COLUMN))
         
@@ -309,23 +309,23 @@ class Rankings:
         tags_label = toga.Label(
             "Tags:", 
             style=Pack(padding=(18,0,0,18), font_size=14, color="#EBF6F7"))
-        self.widgets["add tags label"] = tags_label
+        self.widgets_dict["add tags label"] = tags_label
         self.add_tags = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["add tags"] = self.add_tags
+        self.widgets_dict["add tags"] = self.add_tags
         
         ## grade
         grade_label = toga.Label(
             "Grade:", 
             style=Pack(padding=(18,0,0,18), font_size=14, color="#EBF6F7"))
-        self.widgets["add grade label"] = grade_label
+        self.widgets_dict["add grade label"] = grade_label
         self.add_grade = toga.Selection(
             items=[self.int_to_grade[i] for i in range(len(self.int_to_grade), 0, -1)],
             style=Pack(padding=(0,18), height=44))
-        self.widgets["add grade"] = self.add_grade
+        self.widgets_dict["add grade"] = self.add_grade
         
         self.add_top_box = toga.Box(style=Pack(direction=COLUMN, flex=0.8))
         self.add_entry_container = toga.ScrollContainer(content=self.add_top_box, horizontal=False, style=Pack(flex=0.7))
-        self.widgets["add top_box"] = self.add_top_box
+        self.widgets_dict["add top_box"] = self.add_top_box
         
         # button box
         button = toga.Button(
@@ -371,46 +371,46 @@ class Rankings:
         title_label = toga.Label(
             "Title:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["edit title label"] = title_label
+        self.widgets_dict["edit title label"] = title_label
         self.edit_title = toga.TextInput(style=Pack(padding=(0,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["edit title"] = self.edit_title
+        self.widgets_dict["edit title"] = self.edit_title
 
         self.edit_switch = toga.Switch(
             text="Autoformat",
             id="edit switch",
             value=True, 
             style=Pack(padding=(8,18,18), font_size=12, color="#EBF6F7"))
-        self.widgets["edit switch"] = self.edit_switch
+        self.widgets_dict["edit switch"] = self.edit_switch
         
         ## author/director/creator/artist (person)
         author_label = toga.Label(
             "Author:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["edit book_person label"] = author_label
+        self.widgets_dict["edit book_person label"] = author_label
         director_label = toga.Label(
             "Director:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["edit movie_person label"] = director_label
+        self.widgets_dict["edit movie_person label"] = director_label
         creator_label = toga.Label(
             "Creator:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["edit series_person label"] = creator_label
+        self.widgets_dict["edit series_person label"] = creator_label
         artist_label = toga.Label(
             "Artist:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["edit music_person label"] = artist_label
+        self.widgets_dict["edit music_person label"] = artist_label
         
         self.edit_person = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["edit person"] = self.edit_person
+        self.widgets_dict["edit person"] = self.edit_person
 
         ## stars
         stars_label = toga.Label(
             "Stars:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["edit stars label"] = stars_label
+        self.widgets_dict["edit stars label"] = stars_label
         
         self.edit_stars = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["edit stars"] = self.edit_stars
+        self.widgets_dict["edit stars"] = self.edit_stars
 
         ## years
         start_year_label = toga.Label(
@@ -422,7 +422,7 @@ class Rankings:
             min=-2601, max=date.today().year,
             on_change=self.start_year_change, 
             style=Pack(padding=(0,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["edit start_year"] = self.edit_start_year
+        self.widgets_dict["edit start_year"] = self.edit_start_year
         
         end_year_label = toga.Label(
             "End Year:", 
@@ -430,9 +430,9 @@ class Rankings:
         self.edit_end_year = toga.NumberInput(
             step=1, max=date.today().year,
             style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["edit end_year"] = self.edit_end_year
+        self.widgets_dict["edit end_year"] = self.edit_end_year
         
-        self.widgets["edit year box"] = toga.Box(
+        self.widgets_dict["edit year box"] = toga.Box(
             children=[start_year_label, self.edit_start_year, end_year_label, self.edit_end_year],
             style=Pack(direction=COLUMN))
         
@@ -440,23 +440,23 @@ class Rankings:
         tags_label = toga.Label(
             "Tags:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["edit tags label"] = tags_label
+        self.widgets_dict["edit tags label"] = tags_label
         self.edit_tags = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["edit tags"] = self.edit_tags
+        self.widgets_dict["edit tags"] = self.edit_tags
         
         ## grade
         grade_label = toga.Label(
             "Grade:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["edit grade label"] = grade_label
+        self.widgets_dict["edit grade label"] = grade_label
         self.edit_grade = toga.Selection(
             items=[self.int_to_grade[i] for i in range(len(self.int_to_grade), 0, -1)],
             style=Pack(padding=(0,18), height=44, flex=0.8))
-        self.widgets["edit grade"] = self.edit_grade
+        self.widgets_dict["edit grade"] = self.edit_grade
         
         self.edit_top_box = toga.Box(style=Pack(direction=COLUMN, flex=0.8))
         self.edit_entry_container = toga.ScrollContainer(content=self.edit_top_box, horizontal=False, style=Pack(flex=0.7))
-        self.widgets["edit top_box"] = self.edit_top_box
+        self.widgets_dict["edit top_box"] = self.edit_top_box
         
         # button box
         remove_button = toga.Button(
@@ -505,7 +505,7 @@ class Rankings:
             on_change=self.type_change,
             enabled=False,
             style=Pack(padding=(3,18), height=44, flex=0.8))
-        self.widgets["sort type"] = self.sort_type
+        self.widgets_dict["sort type"] = self.sort_type
         type_box = toga.Box(
             children=[type_label, self.sort_type],
             style=Pack(direction=ROW))
@@ -561,79 +561,79 @@ class Rankings:
         grade_label = toga.Label(
             "Grade:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["sort grade label"] = grade_label
+        self.widgets_dict["sort grade label"] = grade_label
         self.sort_grades = [toga.Selection(style=Pack(flex=0.5, padding=(0,18,18), height=44)) for _ in range(2)]
         self.sort_grades[0].items = [self.int_to_grade[i] for i in range(1, len(self.int_to_grade)+1)]
         self.sort_grades[1].items = [self.int_to_grade[i] for i in range(len(self.int_to_grade), 0, -1)]
         grade_box = toga.Box(children=self.sort_grades, style=Pack(direction=ROW))
-        self.widgets["sort grade"] = self.sort_grades
+        self.widgets_dict["sort grade"] = self.sort_grades
 
         ## author/director/creator/artist (person)
         author_label = toga.Label(
             "Author:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["sort book_person label"] = author_label
+        self.widgets_dict["sort book_person label"] = author_label
         director_label = toga.Label(
             "Director:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["sort movie_person label"] = director_label
+        self.widgets_dict["sort movie_person label"] = director_label
         creator_label = toga.Label(
             "Creator:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["sort series_person label"] = creator_label
+        self.widgets_dict["sort series_person label"] = creator_label
         artist_label = toga.Label(
             "Artist:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["sort music_person label"] = artist_label
+        self.widgets_dict["sort music_person label"] = artist_label
         
         self.sort_person = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["sort person"] = self.sort_person
+        self.widgets_dict["sort person"] = self.sort_person
 
         ## stars
         stars_label = toga.Label(
             "Stars:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["sort stars label"] = stars_label
+        self.widgets_dict["sort stars label"] = stars_label
         
         self.sort_stars = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["sort stars"] = self.sort_stars
+        self.widgets_dict["sort stars"] = self.sort_stars
 
         ## tags
         tags_label = toga.Label(
             "Tags:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["sort tags label"] = tags_label
+        self.widgets_dict["sort tags label"] = tags_label
         
         self.sort_tags_include = toga.TextInput(
             placeholder="include",
             style=Pack(padding=(0,18,0), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["sort tags_include"] = self.sort_tags_include
+        self.widgets_dict["sort tags_include"] = self.sort_tags_include
 
         self.sort_tags_exclude = toga.TextInput(
             placeholder="exclude",
             style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["sort tags_exclude"] = self.sort_tags_exclude
+        self.widgets_dict["sort tags_exclude"] = self.sort_tags_exclude
 
         ## start year between
         start_year_label = toga.Label(
             "Start Year:", 
             style=Pack(padding=(18,0,0,18), font_size=14, color="#EBF6F7"))
-        self.widgets["sort start_year label"] = start_year_label
+        self.widgets_dict["sort start_year label"] = start_year_label
         self.sort_start_years = [
             toga.NumberInput(
                 step=1, 
                 min=-2601, max=date.today().year,
                 style=Pack(flex=0.5, padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
             for _ in range(2)]
-        self.widgets["sort start_year"] = self.sort_start_years
+        self.widgets_dict["sort start_year"] = self.sort_start_years
         start_year_box = toga.Box(children=self.sort_start_years, style=Pack(direction=ROW))
-        self.widgets["sort start_year box"] = start_year_box
+        self.widgets_dict["sort start_year box"] = start_year_box
         
         ## added date between
         added_date_label = toga.Label(
             "Added Date:", 
             style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets["sort added_date label"] = added_date_label
+        self.widgets_dict["sort added_date label"] = added_date_label
         self.sort_added_dates = [
             toga.DateInput(max=date.today(), style=Pack(flex=0.5, padding=(0,18,18), width=160, color="#EBF6F7"))
             for _ in range(2)]
@@ -641,15 +641,15 @@ class Rankings:
             toga.Box(children=[self.sort_added_dates[i],], style=Pack(direction=COLUMN, flex=0.5))
             for i in range(2)
         ]
-        self.widgets["sort added_date"] = self.sort_added_dates
+        self.widgets_dict["sort added_date"] = self.sort_added_dates
         added_date_box = toga.Box(children=added_date_boxes, style=Pack(direction=ROW))
-        self.widgets["sort added_date box"] = added_date_box
+        self.widgets_dict["sort added_date box"] = added_date_box
 
         ## filter reset button
         filter_reset_button = toga.Button(
             "Reset", on_press=self.reset_filter, 
             style=Pack(padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F"))
-        self.widgets["sort filter_reset button"] = filter_reset_button
+        self.widgets_dict["sort filter_reset button"] = filter_reset_button
 
         ## filter box
         self.filter_box = toga.Box(style=Pack(direction=COLUMN))
@@ -662,7 +662,7 @@ class Rankings:
                 self.filters[t] = [
                     filter_label, dividers[0],
                     grade_label, grade_box, dividers[1],
-                    self.widgets[f"sort {t}_person label"], self.sort_person, dividers[2]]
+                    self.widgets_dict[f"sort {t}_person label"], self.sort_person, dividers[2]]
                 self.filters[t] += [stars_label, self.sort_stars, dividers[6]] if t != "book" else []
                 self.filters[t] += [
                     tags_label, self.sort_tags_include, self.sort_tags_exclude, dividers[3],
@@ -843,7 +843,7 @@ class Rankings:
 
 
     def update_rankings(self, load=False, con_cur=None):
-        self.widgets["sort added_date"][1].max = date.today()
+        self.widgets_dict["sort added_date"][1].max = date.today()
         if load:
             self.load_rankings(None, con_cur=con_cur)
         
@@ -861,7 +861,8 @@ class Rankings:
                 criteria, order = c_o
                 string = f"{criteria} {order}" if criteria not in self.type_to_person.values() and criteria != "title" else f"LOWER({criteria}) {order}"
                 sort_criterias.append(string)
-            sorting = "ORDER BY " + ", ".join(sort_criterias) if sort_criterias else ""
+            sorting = "ORDER BY "
+            sorting += ", ".join(sort_criterias) if sort_criterias else "RANDOM()"
 
             ## filter criteria
             filter_criterias = []
@@ -926,10 +927,10 @@ class Rankings:
             # add title search if needed and execute
             if t != "music":
                 query += " OR LOWER(title) LIKE LOWER(?)"
-                query += " ORDER BY title ASC;"
+                query += " ORDER BY LOWER(title) ASC;"
                 cur.execute(query, (s, f"%{s}%", f"%{s}%",))
             else:
-                query += " ORDER BY artist ASC;"
+                query += " ORDER BY LOWER(artist) ASC;"
                 cur.execute(query, (s, f"%{s}%",))
 
             self.data["search"] = cur.fetchall()
@@ -945,7 +946,7 @@ class Rankings:
             for t in self.ranking_types:
                 data = self.data["rankings"][t]
                 items = get_ranges(data)
-                self.widgets[f"{t} range"].items = items
+                set_range(self.widgets_dict[f"{t} range"], items)
 
         else:  
             widget_id = widget.id.split()
@@ -953,7 +954,7 @@ class Rankings:
             if widget_id[1] == "range":
                 t = widget_id[0]
                 data = self.data["rankings"][t]
-                box = self.widgets[f"{t} ranking box"]
+                box = self.widgets_dict[f"{t} ranking box"]
                 box.clear()
 
                 start, end = [int(i) for i in widget.value.split('–')]
@@ -966,18 +967,18 @@ class Rankings:
                     for i in range(start-1, end):
                         e = data[i]
                         id = e[0]
-                        if id not in self.widgets["entries"][t]:
+                        if id not in self.widgets_dict["entries"][t]:
                             entry_box = self.get_entry_box(t, e)
-                            self.widgets["entries"][t][id] = entry_box
-                        box.add(self.widgets["entries"][t][id])
+                            self.widgets_dict["entries"][t][id] = entry_box
+                        box.add(self.widgets_dict["entries"][t][id])
 
-                self.widgets[f"{t} ranking container"].position = toga.Position(0,0)
+                self.widgets_dict[f"{t} ranking container"].position = toga.Position(0,0)
 
             elif widget_id[0] == "sort":
                 t = self.data["load type"]
                 self.ranking_get_data({t:(self.data["load sorting"][t], self.data["load filtering"][t])})
                 items = get_ranges(self.data["rankings"][t])
-                self.widgets[f"{t} range"].items = items
+                self.widgets_dict[f"{t} range"].items = items
 
             elif widget_id[0] == "search":
                 t = self.search_type.value.lower()
@@ -998,17 +999,7 @@ class Rankings:
 
     
     def change_range(self, widget):
-        t, button, _ = widget.id.split()
-        w = self.widgets[f"{t} range"]
-        value = w.value
-        obj = w.items.find(value)
-        idx = w.items.index(obj)
-        if button == "back":
-            if idx != 0:
-                w.value = w.items[idx-1].value
-        elif button == "next":
-            if len(w.items) != idx+1:
-                w.value = w.items[idx+1].value
+        change_range(widget, self.widgets_dict)
 
 
     def type_change(self, widget):
@@ -1026,9 +1017,9 @@ class Rankings:
             data = self.data["filtering"][t]
             for c in data:
                 if c != "grade" and c != "start_year" and c != "added_date":
-                    self.widgets[f"sort {c}"].value = data[c]
+                    self.widgets_dict[f"sort {c}"].value = data[c]
                 else: 
-                    self.widgets[f"sort {c}"][0].value, self.widgets[f"sort {c}"][1].value = data[c]
+                    self.widgets_dict[f"sort {c}"][0].value, self.widgets_dict[f"sort {c}"][1].value = data[c]
 
         elif tab == "search":
             self.search_input.value = ""
@@ -1038,29 +1029,29 @@ class Rankings:
             self.search_input.placeholder = placeholder
 
         else:    
-            box = self.widgets[f"{tab} top_box"]
+            box = self.widgets_dict[f"{tab} top_box"]
             box.clear()
 
             if t == "movie" or t == "series":
                 box.add(
-                    self.widgets[f"{tab} title label"], self.widgets[f"{tab} title"], self.widgets[f"{tab} switch"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    self.widgets[f"{tab} {t}_person label"], self.widgets[f"{tab} person"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    self.widgets[f"{tab} stars label"], self.widgets[f"{tab} stars"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    self.widgets[f"{tab} year box"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    self.widgets[f"{tab} tags label"], self.widgets[f"{tab} tags"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    self.widgets[f"{tab} grade label"], self.widgets[f"{tab} grade"])
+                    self.widgets_dict[f"{tab} title label"], self.widgets_dict[f"{tab} title"], self.widgets_dict[f"{tab} switch"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets_dict[f"{tab} {t}_person label"], self.widgets_dict[f"{tab} person"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets_dict[f"{tab} stars label"], self.widgets_dict[f"{tab} stars"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets_dict[f"{tab} year box"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets_dict[f"{tab} tags label"], self.widgets_dict[f"{tab} tags"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets_dict[f"{tab} grade label"], self.widgets_dict[f"{tab} grade"])
             elif t == "book":
                 box.add(
-                    self.widgets[f"{tab} title label"], self.widgets[f"{tab} title"], self.widgets[f"{tab} switch"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    self.widgets[f"{tab} {t}_person label"], self.widgets[f"{tab} person"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    self.widgets[f"{tab} year box"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    self.widgets[f"{tab} tags label"], self.widgets[f"{tab} tags"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    self.widgets[f"{tab} grade label"], self.widgets[f"{tab} grade"])
+                    self.widgets_dict[f"{tab} title label"], self.widgets_dict[f"{tab} title"], self.widgets_dict[f"{tab} switch"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets_dict[f"{tab} {t}_person label"], self.widgets_dict[f"{tab} person"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets_dict[f"{tab} year box"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets_dict[f"{tab} tags label"], self.widgets_dict[f"{tab} tags"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets_dict[f"{tab} grade label"], self.widgets_dict[f"{tab} grade"])
             elif t == "music":
                 box.add(
-                    self.widgets[f"{tab} {t}_person label"], self.widgets[f"{tab} person"], self.widgets[f"{tab} switch"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    self.widgets[f"{tab} tags label"], self.widgets[f"{tab} tags"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                    self.widgets[f"{tab} grade label"], self.widgets[f"{tab} grade"])
+                    self.widgets_dict[f"{tab} {t}_person label"], self.widgets_dict[f"{tab} person"], self.widgets_dict[f"{tab} switch"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets_dict[f"{tab} tags label"], self.widgets_dict[f"{tab} tags"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
+                    self.widgets_dict[f"{tab} grade label"], self.widgets_dict[f"{tab} grade"])
             
         self.type_change_check = False
 
@@ -1077,7 +1068,7 @@ class Rankings:
         if t != "music":
             start_year, end_year = self.add_start_year.value, self.add_end_year.value
             if not start_year and end_year:
-                await self.app.dialog(toga.InfoDialog("Error", "End year cannot exist without start year."))
+                await self.app.dialog(toga.InfoDialog("Error", "The end year cannot exist without the start year."))
                 return 0
 
             title = self.add_title.value.strip()
@@ -1180,13 +1171,13 @@ class Rankings:
         con.close()
 
         items = get_ranges(self.data["rankings"][t])
-        self.widgets[f"{t} range"].items = items
+        set_range(self.widgets_dict[f"{t} range"], items)
 
         self.app.open_ranking(widget=None, tab=t.capitalize())
 
 
     async def remove_entry_dialog(self, widget):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you wish to remove the entry?"))
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to remove the entry?"))
         if result:
             await self.remove_entry()
 
@@ -1208,17 +1199,17 @@ class Rankings:
 
         con.close()
 
-        if id in self.widgets["entries"][t]:
-            del self.widgets["entries"][t][id]
+        if id in self.widgets_dict["entries"][t]:
+            del self.widgets_dict["entries"][t][id]
 
         items = get_ranges(self.data["rankings"][t])
-        self.widgets[f"{t} range"].items = items
+        set_range(self.widgets_dict[f"{t} range"], items)
 
         self.app.open_ranking(widget=None, tab=t.capitalize())
         
 
     async def save_entry_dialog(self, widget):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you wish to save the entry?"))
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to save the entry?"))
         if result:
             await self.save_entry()
 
@@ -1231,10 +1222,10 @@ class Rankings:
             start_year, end_year = self.edit_start_year.value, self.edit_end_year.value
             if start_year and end_year:
                 if start_year > end_year:
-                    await self.app.dialog(toga.InfoDialog("Error", "Start year cannot be after end year."))
+                    await self.app.dialog(toga.InfoDialog("Error", "The end year cannot exist without a start year."))
                     return 0
             elif not start_year and end_year:
-                await self.app.dialog(toga.InfoDialog("Error", "End year cannot exist without start year."))
+                await self.app.dialog(toga.InfoDialog("Error", "The start year cannot be later than the end year."))
                 return 0
 
             title = self.edit_title.value.strip()
@@ -1245,7 +1236,7 @@ class Rankings:
 
         person_value = self.edit_person.value.strip()
         if t == "music":
-            if not person:
+            if not person_value:
                 await self.app.dialog(toga.InfoDialog("Error", "Artist must be specified."))
                 return 0
             else:
@@ -1341,11 +1332,11 @@ class Rankings:
 
         con.close()
         
-        if id in self.widgets["entries"][t]:
-            del self.widgets["entries"][t][id]
+        if id in self.widgets_dict["entries"][t]:
+            del self.widgets_dict["entries"][t][id]
 
         items = get_ranges(self.data["rankings"][t])
-        self.widgets[f"{t} range"].items = items
+        set_range(self.widgets_dict[f"{t} range"], items)
 
         self.app.open_ranking(widget=None, tab=t.capitalize())
 
@@ -1520,11 +1511,11 @@ class Rankings:
         
         children = [id_label, main_label, middle_label, grade_label]
         if edit_button:
-            if (button_id := f"{id} edit_button") not in self.widgets["entries"][entry_type]:
-                self.widgets["entries"][entry_type][button_id] = toga.Button(
+            if (button_id := f"{id} edit_button") not in self.widgets_dict["entries"][entry_type]:
+                self.widgets_dict["entries"][entry_type][button_id] = toga.Button(
                     "Edit", id=button_id, on_press=self.app.open_ranking_edit_entry, 
                     style=Pack(padding=4, height=42, font_size=12, color="#EBF6F7", background_color="#27221F"))
-            children.append(self.widgets["entries"][entry_type][button_id])
+            children.append(self.widgets_dict["entries"][entry_type][button_id])
         children.append(toga.Divider(style=Pack(background_color="#27221F")))
         entry_box = toga.Box(children=children, style=Pack(direction=COLUMN))
         
@@ -1538,7 +1529,7 @@ class Rankings:
         filtering = []       
         grades = [self.grade_to_int[self.sort_grades[i].value] for i in range(2)]
         if grades[0] > grades[1]:
-            await self.app.dialog(toga.InfoDialog("Error", "The from (first) grade cannot be higher than the to (second) grade."))
+            await self.app.dialog(toga.InfoDialog("Error", "The from (left) grade cannot be higher than the to (right) grade."))
             return 0
         filtering.append(("grade", grades))
         
@@ -1550,7 +1541,7 @@ class Rankings:
         
         if tags_include and tags_exclude:
             if temp_include & temp_exclude:
-                await self.app.dialog(toga.InfoDialog("Error", "Tags in include and exclude lists cannot overlap."))
+                await self.app.dialog(toga.InfoDialog("Error", "Tags in the include and exclude lists cannot overlap."))
                 return 0
             else:
                 filtering.append(("tags_include", temp_include))
@@ -1562,7 +1553,7 @@ class Rankings:
 
         dates = (self.sort_added_dates[0].value, self.sort_added_dates[1].value)
         if dates[0] > dates[1]:
-            await self.app.dialog(toga.InfoDialog("Error", "The from (first) date cannot be higher than the to (second) date."))
+            await self.app.dialog(toga.InfoDialog("Error", "The from (left) date cannot be later than the to (right) date."))
             return 0
         filtering.append(("added_date", dates))
 
@@ -1575,7 +1566,7 @@ class Rankings:
             if start_year or end_year:
                 if start_year and end_year:
                     if start_year[0] > end_year[1]:
-                        await self.app.dialog(toga.InfoDialog("Error", "The from (first) year cannot be higher than the to (second) year."))
+                        await self.app.dialog(toga.InfoDialog("Error", "The from (left) year cannot be later than the to (right) year."))
                         return 0
                     years = (int(start_year), int(end_year))
                 elif start_year:
@@ -1644,22 +1635,22 @@ class Rankings:
         con.close()
 
         for i in range(len(widgets)):
-            self.widgets[f"edit {widgets[i]}"].value = self.int_to_grade[entry[i]] if i == 2 else entry[i]
-        self.widgets["edit switch"].value = False
+            self.widgets_dict[f"edit {widgets[i]}"].value = self.int_to_grade[entry[i]] if i == 2 else entry[i]
+        self.widgets_dict["edit switch"].value = False
 
 
     def clear_add_box(self):
         for w in ["title", "person", "stars", "tags", "start_year", "end_year", "grade", "switch"]:
             if w == "grade":
-                self.widgets[f"add {w}"].value = "S"
+                self.widgets_dict[f"add {w}"].value = "S"
             elif w == "switch":
-                self.widgets[f"add {w}"].value = True
+                self.widgets_dict[f"add {w}"].value = True
             else:
-                self.widgets[f"add {w}"].value = ""
+                self.widgets_dict[f"add {w}"].value = ""
 
 
-    async def reset_ranking_dialog(self, widget):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you wish to reset Rankings database?"))
+    async def reset_ranking_dialog(self):
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to reset Rankings database?"))
         if result:
             await self.reset_ranking()
 
@@ -1752,7 +1743,7 @@ class Rankings:
 
         self.app.setup_ui(rankings=True)
 
-        await self.app.dialog(toga.InfoDialog("Success", "Rankings database was reset successfully."))
+        await self.app.dialog(toga.InfoDialog("Success", "Rankings database has been reset successfully."))
 
     
     def get_tags(self, value):
@@ -1774,7 +1765,7 @@ class Rankings:
 
 
     async def replace_entries_tag_dialog(self, entry_type, old, new):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you wish to replace the tag in all entries of the type?"))
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to replace the tag in all entries of the type?"))
         if result:
             await self.replace_entries_tag(entry_type, old, new)
 
@@ -1807,11 +1798,13 @@ class Rankings:
                 cur.execute(query_start+" SET tags = ? WHERE id = ?", (tags, id,))
             con.commit()
 
-            await self.app.dialog(toga.InfoDialog("Success", f"{len(new_entries)} entries' tags were updated successfully."))
+            l = len(new_entries)
+            s = "entries'" if l > 1 else "entry's" 
+            await self.app.dialog(toga.InfoDialog("Success", f"{l} {s} tags have been updated successfully."))
 
             self.app.setup_rankings = True
 
         else:
-            await self.app.dialog(toga.InfoDialog("Error", "There is not an entry with the old tag existing."))
+            await self.app.dialog(toga.InfoDialog("Error", "No entry found with the old tag."))
         
         con.close()

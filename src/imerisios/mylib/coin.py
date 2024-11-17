@@ -85,7 +85,7 @@ class CoinFlip:
             
         self.coin_sides = [self.get_heads_box(), self.get_tails_box()]
         flip_button = toga.Button(
-            "Invert the coin", on_press=self.flip_coin, 
+            "Flip the coin", on_press=self.flip_coin, 
             style=Pack(flex=0.2, height=140, padding=18, font_size=28, color="#EBF6F7", background_color="#27221F"))
         
         coin_box = toga.Box(

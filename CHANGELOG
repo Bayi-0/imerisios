@@ -263,3 +263,45 @@
 
 ### Removed
 - N/A
+
+
+## [v2.5.0] - 2024-11-12
+
+### Added
+- Confirmation dialog when resetting today’s habit records;
+- Button in settings to add habit records for the past week.
+
+### Changed
+- add_habit_records func so that it can work for multiple dates;
+- Wording for inputs, some placeholders.
+
+### Fixed
+- N/A
+
+### Removed
+- N/A
+
+
+## [v2.6.0] - 2024-11-17
+
+### Added
+- Todo list task ranges;
+- Delete entry for date in settings;
+- Habit details: two tabs, habit ranges.
+
+### Changed
+- Updated dialog messages;
+- Settings functions have wrappers so that tabs load only when their func is used;
+- Randomized rankings when no sort input;
+- Minor label changes;
+- Habit details: sorting by alphabet, load on open.
+
+### Fixed
+- Solved the problem with journal add note not being cleared;
+- Fixed restore_databases;
+- Made average success numbers in habit more always work properly and without complications;
+- Ensured case insensitive sorting;
+- Fixed inability to edit music entries.
+
+### Removed
+- N/A

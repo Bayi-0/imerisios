@@ -99,3 +99,30 @@ def get_ranges(items, chunk=20):
         items = ['–'.join([str(i) for i in r]) for r in ranges]
 
         return items
+
+
+def change_range(widget, widgets):
+    t, button, _ = widget.id.split()
+    w = widgets[f"{t} range"]
+    value = w.value
+    obj = w.items.find(value)
+    idx = w.items.index(obj)
+    if button == "back":
+        if idx != 0:
+            w.value = w.items[idx-1].value
+    elif button == "next":
+        if len(w.items) != idx+1:
+            w.value = w.items[idx+1].value
+
+
+def set_range(widget, items):
+    if val := widget.value:
+        row = widget.items.find(val)
+        idx = widget.items.index(row)
+        idx = idx if len(items) - len(widget.items) >= 0 else idx-1
+    else:
+        idx = 0
+
+    widget.items = items
+    if idx > 0:
+        widget.value = widget.items[idx].value
