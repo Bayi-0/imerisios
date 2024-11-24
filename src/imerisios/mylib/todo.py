@@ -574,10 +574,13 @@ class ToDo:
 
     def update_todo(self, day_change=False, load=True, con_cur=None):
         weekdays_left = 7 - date.today().isocalendar().weekday if date.today().isocalendar().weekday != 7 else 7
-        weekly_max_date = date.today()+timedelta(days=weekdays_left)
-        monthly_max_date = (date((weekly_max_date+timedelta(days=1)).year, weekly_max_date.month+1, 1) - timedelta(days=1))
-        if monthly_max_date == weekly_max_date:
-            monthly_max_date = (date((weekly_max_date+timedelta(days=1)).year, weekly_max_date.month+2, 1) - timedelta(days=1))
+        weekly_max_date = date.today() + timedelta(days=weekdays_left)
+
+        temp = weekly_max_date + timedelta(days=1)
+        monthly_month = temp.month + 1 if temp.month != 12 else 1
+        monthly_year = temp.year if monthly_month != 1 else temp.year + 1
+        monthly_max_date = date(monthly_year, monthly_month, 1) - timedelta(days=1)
+
         yearly_max_date = date((monthly_max_date+timedelta(days=1)).year, 12, 31)
 
         self.type_dates_dict = {

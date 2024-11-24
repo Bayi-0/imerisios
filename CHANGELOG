@@ -305,3 +305,19 @@
 
 ### Removed
 - N/A
+
+
+## [v2.6.1] - 2024-11-24
+
+### Added
+- N/A
+
+### Changed
+- N/A
+
+### Fixed
+- Fixed update_todo (wasn't working correctly at the end of year);
+- Fixed habit id display in the change state dialog.
+
+### Removed
+- N/A

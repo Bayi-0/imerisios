@@ -661,7 +661,7 @@ class Habits:
 
     async def change_habit_state_dialog(self, widget):
         splt = widget.id.split()
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", f"Are you sure you want to set [{int(splt[0]):04d}] habit's state to {splt[2]}?"))
+        result = await self.app.dialog(toga.QuestionDialog("Confirmation", f"Are you sure you want to set [{int(splt[0]):06d}] habit's state to {splt[2]}?"))
         if result:
             await self.change_habit_state(splt)
 
