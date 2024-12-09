@@ -25,15 +25,22 @@ class Habits:
             "Habit Tracker", 
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
         
-        date_label = toga.Label(
-            "Date:", 
-            style=Pack(padding=(10,20), font_size=16, color="#EBF6F7"))
         self.tracker_date = toga.DateInput(
             id="tracker date",
             on_change=self.load_habits, 
-            style=Pack(padding=(0,20), width=200, color="#EBF6F7"))
+            style=Pack(flex=0.6, width=201, color="#EBF6F7"))
+        back_button = toga.Button(
+            "<", id="tracker back button",
+            on_press=self.change_date, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
+        next_button = toga.Button(
+            ">", id="tracker next button",
+            on_press=self.change_date, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
         date_input_box = toga.Box(
-            children=[date_label, self.tracker_date], 
+            children=[back_button, self.tracker_date, next_button], 
             style=Pack(direction=ROW))
         
         today_button = toga.Button(
@@ -153,9 +160,10 @@ class Habits:
             "“The scariest moment is always just before you start.”", "— Stephen King, On Writing: A Memoir of the Craft",
             "“If you only read the books that everyone else is reading, you can only think what everyone else\nis thinking.”", "— Toru Watanabe, Norwegian Wood by Haruki Murakami",
             "“Pain is inevitable. Suffering is optional.”", "— Haruki Murakami, What I Talk About When I Talk About Running",
-            "“The world doesn't give you what you want. It gives you what you take.”", "— Eithan Arelius, Cradle by Will Wight"
+            "“The world doesn't give you what you want. It gives you what you take.”", "— Eithan Arelius, Cradle by Will Wight",
+            "“When the soul suffers too much, it develops a taste for misfortune.”", "— Albert Camus, The First Man"
         ]
-        quotes_box_top = toga.Box(style=Pack(direction=COLUMN, flex=0.23, padding=4))
+        quotes_box_top = toga.Box(style=Pack(direction=COLUMN, flex=0.26, padding=4))
         for i in range(0, len(quotes_top)-1, 2):
             quotes_box_top.add(toga.Label(quotes_top[i], style=Pack(padding=(4,4,0), font_size=7, color="#EBF6F7")))
             quotes_box_top.add(
@@ -165,30 +173,29 @@ class Habits:
             "“What we seek is some kind of compensation for what we put up with.”", "— Nakata, Kafka on the Shore by Haruki Murakami",
             "“It has long been an axiom of mine that the little things are infinitely the most important.”", "— Sherlock Holmes, by Arthur Conan Doyle",
             "“The habit of hoping always for better things is actually an obstacle to success.”", "— Stendhal, The Red and the Black",
+            "“There is always a philosophy for lack of courage.”", "— Albert Camus, Notebooks (1942-1951)",
             "“If you're going to do something that's going to slow down your work, just as well put off doing\nit as long as possible.”", "— John Wyndham, The Chrysalids",
             "“You have to decide who you want to be. Before someone else does it for you.”", "— Eithan Arelius, Cradle by Will Wight",
             "“I'm not afraid of death; I just don't want to be there when it happens.”", "— Toru Watanabe, Norwegian Wood by Haruki Murakami (originally Woody Allen)"
         ]
-        quotes_box_bottom = toga.Box(style=Pack(direction=COLUMN, flex=0.23, padding=4, background_color="#393432"))
+        quotes_box_bottom = toga.Box(style=Pack(direction=COLUMN, flex=0.26, padding=4, background_color="#393432"))
         for i in range(0, len(quotes_bottom)-1, 2):
             quotes_box_bottom.add(toga.Label(quotes_bottom[i], style=Pack(padding=(4,4,0), font_size=7, color="#EBF6F7")))
             quotes_box_bottom.add(
                 toga.Label(quotes_bottom[i+1], 
                 style=Pack(padding=(0,4,4), text_align="right", font_size=7, font_style="italic", color="#EBF6F7")))
 
-        add_label = toga.Label(
-            "Habit you wish to add\n(no more than 34 characters):", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
         self.add_input = toga.TextInput(
             id="add input 34",
+            placeholder="(no more than 34 characters)",
             on_change=length_check, 
-            style=Pack(padding=(0,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+            style=Pack(padding=(11,18,0), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
         add_button = toga.Button(
             "Add", on_press=self.add_habit, 
-            style=Pack(flex=0.5, height=120, padding=(11,11,18), font_size=24, color="#EBF6F7", background_color="#27221F"))
+            style=Pack(flex=0.5, height=120, padding=(8,11,18), font_size=24, color="#EBF6F7", background_color="#27221F"))
         add_box = toga.Box(
-            children=[add_label, self.add_input, add_button],
-            style=Pack(direction=COLUMN, flex=0.26))
+            children=[self.add_input, add_button],
+            style=Pack(direction=COLUMN, flex=0.2))
 
         add_habit_box = toga.Box(
             children=[
@@ -1116,3 +1123,17 @@ class Habits:
     
     def change_range(self, widget):
         change_range(widget, self.widgets_dict)
+
+
+    def change_date(self, widget):
+        w = self.tracker_date
+        val = w.value
+        mn, mx = w.min, w.max
+        t = widget.id.split()[1]
+        if t == "back":
+            if val != mn:
+                w.value = val - timedelta(1)
+        else:
+            if val != mx:
+                w.value = val + timedelta(1)
+                

@@ -595,6 +595,7 @@ class Imerisios(toga.App):
 
             Environment = jclass("android.os.Environment")
             backup_folder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath()
+            backedup = []
 
             def backup_database(db_path, backup_path):
                 con = sql.connect(db_path)
@@ -609,8 +610,13 @@ class Imerisios(toga.App):
 
             for i in range(len(db_names)):
                 backup_database(db_paths[i], backup_paths[i])
+                backedup.append(db_names[i])
 
-            await self.app.dialog(toga.InfoDialog("Success", f"The databases were backed up to {backup_folder} successfully."))
+            backedup = [db+".db" for db in backedup]
+
+            start = "Database"
+            start += f"s {backedup} have" if len(backedup) > 1 else f" {backedup} has" 
+            await self.app.dialog(toga.InfoDialog("Success", f"{start} been backed up successfully."))
 
     
     async def restore_databases(self, widget):

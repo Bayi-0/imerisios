@@ -15,7 +15,7 @@ class CoinFlip:
             style=Pack(padding=(14,0,2), text_align="center", font_weight="bold", font_size=48, color="#EBF6F7"))
         heads_image = toga.ImageView(
             toga.Image("resources/coin/heads.png"), 
-            style=Pack(flex=0.5, padding=11))
+            style=Pack(flex=0.5))
         heads_question = toga.Label(
             "Will you embrace the destiny\ndecided by this coin flip,\naccepting its outcome as the\nguiding force of your fate?", 
             style=Pack(padding=(4,8,10), text_align="center", font_size=18, color="#EBF6F7"))
@@ -34,7 +34,7 @@ class CoinFlip:
         tails_title = toga.Label(
             "Tails", 
             style=Pack(padding=(14,0,2), text_align="center", font_weight="bold", font_size=48, color="#EBF6F7"))
-        tails_image = toga.ImageView(toga.Image("resources/coin/tails.png"), style=Pack(flex=0.5, padding=11))
+        tails_image = toga.ImageView(toga.Image("resources/coin/tails.png"), style=Pack(flex=0.5))
         tails_question = toga.Label(
             "Will you embrace the destiny\ndecided by this coin flip,\naccepting its outcome as the\nguiding force of your fate?", 
             style=Pack(padding=(4,8,10), text_align="center", font_size=18, color="#EBF6F7"))

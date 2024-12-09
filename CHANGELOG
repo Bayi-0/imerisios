@@ -321,3 +321,21 @@
 
 ### Removed
 - N/A
+
+
+## [v2.7.0] - 2024-12-09
+
+### Added
+- Back/next buttons for tracker date;
+- Note range.
+
+### Changed
+- Coin images;
+- Back up dialog message now shows which dbs were backed up;
+- Habit add, replaced label with quotes.
+
+### Fixed
+- N/A
+
+### Removed
+- N/A

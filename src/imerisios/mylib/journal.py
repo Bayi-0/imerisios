@@ -4,7 +4,7 @@ from toga.constants import COLUMN, ROW
 from datetime import date, timedelta
 import sqlite3 as sql
 from collections import defaultdict
-from imerisios.mylib.tools import length_check, get_connection, close_connection, get_month_dicts
+from imerisios.mylib.tools import length_check, get_connection, close_connection, get_month_dicts, get_ranges, set_range, change_range
 
 
 class Journal:
@@ -151,12 +151,33 @@ class Journal:
             "Notes", 
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
 
+        back_button = toga.Button(
+            "<", id="note back button",
+            on_press=self.change_range, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
+        next_button = toga.Button(
+            ">", id="note next button",
+            on_press=self.change_range, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
+        )
+        self.notes_range = toga.Selection(
+            id="note range", 
+            on_change=self.load_notes,
+            style=Pack(flex=0.6, padding=4, height=44))
+        self.widgets_dict["note range"] = self.notes_range
+        notes_range_box = toga.Box(
+            children=[back_button, self.notes_range, next_button],
+            style=Pack(direction=ROW))
+
         self.journal_notes_list_box = toga.Box(style=Pack(direction=COLUMN))
         self.journal_notes_list_container = toga.ScrollContainer(content=self.journal_notes_list_box, horizontal=False, style=Pack(flex=0.9))
+        self.widgets_dict["note container"] = self.journal_notes_list_container
 
         notes_box = toga.Box(
             children=[
             label, toga.Divider(style=Pack(background_color="#27221F")),
+            notes_range_box, toga.Divider(style=Pack(background_color="#27221F")),
             self.journal_notes_list_container
             ], 
             style=Pack(direction=COLUMN, background_color="#393432")
@@ -309,7 +330,7 @@ class Journal:
             self.journal_get_data(True, True, (con, cur))
             self.load_entry(None, (con, cur))
             if notes:
-                self.load_notes(False, (con, cur))
+                self.load_notes(data=False, con_cur=(con, cur))
 
             close_connection(con, con_cur)
 
@@ -458,30 +479,41 @@ class Journal:
         con.close()
 
 
-    def load_notes(self, data=True, con_cur=None):
+    def load_notes(self, widget=None, data=False, con_cur=None):
         if data:
             self.journal_get_data(notes=True, con_cur=con_cur)
-
-        note_box = self.journal_notes_list_box
-        note_box.clear()
+        
         data = self.data["notes"]
-        if not data:
-                note_box.add(toga.Label(
-                    "Added notes will appear here.",
-                    style=Pack(padding=10, font_size=12, color="#EBF6F7")))
-        else:
-            for n in self.data["notes"]:
-                b_id = f"{n[0]} note button"
-                if b_id not in self.widgets_dict:
-                    self.widgets_dict[b_id] = toga.Button(
-                        f"{n[1]}", id=b_id, on_press=self.app.open_edit_note, 
-                        style=Pack(flex=0.1, height=80, font_size=12, color="#EBF6F7", background_color="#27221F"))
-                else: 
-                    self.widgets_dict[b_id].text = n[1]
-                    
-                note_box.add(
-                    toga.Box(children=[self.widgets_dict[b_id]], style=Pack(direction=COLUMN)),
-                    toga.Divider(style=Pack(background_color="#27221F")))    
+
+        if not widget:
+            items = get_ranges(data)
+            set_range(self.widgets_dict["note range"], items)
+
+        else: 
+            box = self.journal_notes_list_box
+            box.clear()
+
+            start, end = [int(i) for i in widget.value.split('–')]
+
+            if start == 0 and end == 0:
+                    box.add(toga.Label(
+                        "Added notes will appear here.",
+                        style=Pack(padding=10, font_size=12, color="#EBF6F7")))
+            else:
+                for i in range(start-1, end):
+                    n = data[i]
+                    b_id = f"{n[0]} note button"
+                    if b_id not in self.widgets_dict:
+                        self.widgets_dict[b_id] = toga.Button(
+                            f"{n[1]}", id=b_id, on_press=self.app.open_edit_note, 
+                            style=Pack(flex=0.1, height=80, font_size=12, color="#EBF6F7", background_color="#27221F"))
+                    else: 
+                        self.widgets_dict[b_id].text = n[1]
+                        
+                    box.add(
+                        toga.Box(children=[self.widgets_dict[b_id]], style=Pack(direction=COLUMN)),
+                        toga.Divider(style=Pack(background_color="#27221F")))  
+                self.widgets_dict[f"note container"].position = toga.Position(0,0)  
                 
 
     def add_note(self, widget):
@@ -497,7 +529,7 @@ class Journal:
             """, (title, content,))
             con.commit()
 
-            self.load_notes(con_cur=(con, cur))
+            self.load_notes(data=True, con_cur=(con, cur))
 
             con.close()
 
@@ -530,7 +562,7 @@ class Journal:
         if button_id in self.widgets_dict:
             del self.widgets_dict[button_id]
 
-        self.load_notes(con_cur=(con, cur))
+        self.load_notes(data=True, con_cur=(con, cur))
     
         con.close()
 
@@ -554,7 +586,7 @@ class Journal:
         if button_id in self.widgets_dict:
             del self.widgets_dict[button_id]
 
-        self.load_notes(con_cur=(con, cur))
+        self.load_notes(data=True, con_cur=(con, cur))
 
         con.close()
 
@@ -646,3 +678,7 @@ class Journal:
             await self.app.dialog(toga.InfoDialog("Success", "The entry has been removed successfully."))
         else:
             await self.app.dialog(toga.InfoDialog("Error", "No entry found for the selected date."))
+
+
+    def change_range(self, widget):
+        change_range(widget, self.widgets_dict)
