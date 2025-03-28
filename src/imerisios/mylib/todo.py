@@ -12,6 +12,10 @@ class ToDo:
         self.db_path = db_path
 
         self.widgets_dict = {"tasks":{}}
+        self.tier_num_to_name = {1: "routine", 2: "challenging", 3: "significant", 4: "momentous"}
+        self.tier_name_to_num = {"routine": 1, "challenging": 2, "significant": 3, "momentous": 4}
+        self.urgency_num_to_name = {1: "low", 2: "medium", 3: "high"}
+        self.urgency_name_to_num = {"low": 1, "medium": 2, "high": 3}
         self.data = {"task types": ["daily", "weekly", "monthly", "yearly"], "task tiers": ["routine", "challenging", "significant", "momentous"]}
         self.type_dates_dict = {}
         self.task_history_load = {"routine", "challenging", "significant", "momentous"}
@@ -548,23 +552,22 @@ class ToDo:
         con, cur = get_connection(self.db_path)
         cur.executescript("""
             CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            task TEXT NOT NULL,
-            tier TEXT CHECK(tier IN ('routine', 'challenging', 'significant', 'momentous')) NOT NULL,
-            task_type TEXT CHECK(task_type IN ('daily', 'weekly', 'monthly', 'yearly')) NOT NULL,
-            urgency TEXT CHECK(urgency IN ('low', 'medium', 'high')) NOT NULL,
-            created_date DATE DEFAULT (date('now', 'localtime')),
-            due_date DATE NOT NULL,
-            completed_date DATE
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task TEXT NOT NULL,
+                tier INTEGER CHECK(tier IN (1, 2, 3, 4)) NOT NULL,  -- 1=routine, 2=challenging, 3=significant, 4=momentous
+                urgency INTEGER CHECK(urgency IN (1, 2, 3)),  -- 1=low, 2=medium, 3=high
+                created_date DATE DEFAULT (date('now', 'localtime')),
+                due_date DATE,
+                completed_date DATE
             );
 
             CREATE INDEX IF NOT EXISTS idx_tasks_tier ON tasks(tier);
-                       
-            CREATE INDEX IF NOT EXISTS idx_tasks_completed_date ON tasks(completed_date);     
+            CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
+            CREATE INDEX IF NOT EXISTS idx_tasks_completed_date ON tasks(completed_date);    
         """)
         con.commit()
 
-        self.update_todo(load=False, con_cur=(con, cur))
+        self.update_todo()
         self.load_tasks(types=["daily", "weekly", "monthly", "yearly"], con_cur=(con, cur))
 
         con.close()
@@ -572,7 +575,7 @@ class ToDo:
         return list_box, history_box, add_box, edit_box
 
 
-    def update_todo(self, day_change=False, load=True, con_cur=None):
+    def update_todo(self, day_change=False):
         weekdays_left = 7 - date.today().isocalendar().weekday if date.today().isocalendar().weekday != 7 else 7
         weekly_max_date = date.today() + timedelta(days=weekdays_left)
 
@@ -591,33 +594,31 @@ class ToDo:
         
         if day_change:
             self.app.setup_todo = True
-            load = False
-
-        self.update_task_types(load, con_cur)
-
 
     
     def todo_get_data(self, types: list=[], tiers: list=[], con_cur=None):
         con, cur = get_connection(self.db_path, con_cur)
 
         for t in types:
+            dates = self.type_dates_dict[t]
+            if t == "daily":
+                dates = ("0001-01-01", dates[1])
+
             cur.execute("""
                 SELECT id, task, tier, urgency, created_date, due_date FROM tasks
-                WHERE task_type IS ? AND completed_date IS NULL
+                WHERE due_date >= ? AND due_date <= ?
+                    AND completed_date IS NULL
                 ORDER BY
                     due_date ASC,
-                    CASE urgency
-                        WHEN 'high' THEN 1
-                        WHEN 'medium' THEN 2
-                        WHEN 'low' THEN 3
-                    END;
-            """, (t,))
+                    URGENCY DESC;
+            """, dates)
             tasks = cur.fetchall()
 
             cur.execute("""
                 SELECT COUNT(*) FROM tasks
-                WHERE task_type IS ? AND completed_date IS NULL;
-            """, (t,))
+                WHERE due_date >= ? AND due_date <= ?
+                    AND completed_date IS NULL;
+            """, dates)
             count = cur.fetchone()[0]
 
             self.data[t] = (tasks, count)
@@ -627,13 +628,13 @@ class ToDo:
                 SELECT id, task, created_date, completed_date FROM tasks
                 WHERE tier IS ? AND completed_date IS NOT NULL
                 ORDER BY completed_date DESC;
-            """, (t,))
+            """, (self.tier_name_to_num[t],))
             tasks = cur.fetchall()
 
             cur.execute("""
                 SELECT COUNT(*) FROM tasks
                 WHERE tier IS ? AND completed_date IS NOT NULL;
-            """, (t,))
+            """, (self.tier_name_to_num[t],))
             count = cur.fetchone()[0]
 
             self.data[t] = (tasks, count)
@@ -644,17 +645,17 @@ class ToDo:
     async def add_task(self, widget):
         if task := self.add_input.value:
             task = task.strip()
-            tier = self.add_tier.value.lower()
-            urgency = self.add_urgency.value.lower()
+            tier = self.tier_name_to_num[self.add_tier.value.lower()]
+            urgency = self.urgency_name_to_num[self.add_urgency.value.lower()]
             task_type = self.add_type.value.lower()
             due_date = self.add_duedate.value
 
             con, cur = get_connection(self.db_path)
             
             cur.execute("""
-                INSERT INTO tasks (task_type, tier, task, urgency, due_date)
-                VALUES (?, ?, ?, ?, ?);
-            """, (task_type, tier, task, urgency, due_date))
+                INSERT INTO tasks (tier, task, urgency, due_date)
+                VALUES (?, ?, ?, ?);
+            """, (tier, task, urgency, due_date))
 
             con.commit()
 
@@ -682,18 +683,19 @@ class ToDo:
         con, cur = get_connection(self.db_path)
 
         cur.execute("""
+            SELECT due_date, tier FROM tasks
+            WHERE id = ?;
+        """, (id,))
+        due_date, tier = cur.fetchone()
+        task_type = self.determine_type(due_date)
+
+        cur.execute("""
             UPDATE tasks
-            SET completed_date = date('now', 'localtime')
+            SET completed_date = date('now', 'localtime'), urgency = NULL, due_date = NULL
             WHERE id = ?;
         """, (id,))
         
         con.commit()
-
-        cur.execute("""
-            SELECT task_type, tier FROM tasks
-            WHERE id = ?;
-        """, (id,))
-        task_type, tier = cur.fetchone()
 
         if id in self.widgets_dict["tasks"]:
             del self.widgets_dict["tasks"][id]
@@ -701,7 +703,7 @@ class ToDo:
 
         self.load_tasks(types=[task_type], con_cur=(con, cur))
 
-        self.task_history_load.add(tier)
+        self.task_history_load.add(self.tier_num_to_name[tier])
 
         con.close()
 
@@ -716,14 +718,15 @@ class ToDo:
 
             cur.execute("""
                 UPDATE tasks
-                SET task_type = ?, tier = ?, task = ?, urgency = ?, due_date = ?
+                SET tier = ?, task = ?, urgency = ?, due_date = ?
                 WHERE id = ?;
-            """, (task_type, self.edit_tier.value.lower(), task, self.edit_urgency.value.lower(), self.edit_duedate.value, id,))
+            """, (self.tier_name_to_num[self.edit_tier.value.lower()], task, self.urgency_name_to_num[self.edit_urgency.value.lower()], self.edit_duedate.value, id,))
             con.commit()
 
             if id in self.widgets_dict["tasks"]:
                 del self.widgets_dict["tasks"][id]
-            temp = [self.edit_type.value.lower()]
+
+            temp = [task_type]
             task_types = temp if self.temp_task_type in temp else temp+[self.temp_task_type]
             self.load_tasks(types=task_types, con_cur=(con, cur))
 
@@ -744,10 +747,11 @@ class ToDo:
         con, cur = get_connection(self.db_path)
         
         cur.execute("""
-            SELECT task_type FROM tasks
+            SELECT due_date FROM tasks
             WHERE id = ?;
         """, (id,))
-        task_type = cur.fetchone()[0]
+        due_date = cur.fetchone()[0]
+        task_type = self.determine_type(due_date)
 
         cur.execute("""
             DELETE FROM tasks
@@ -835,48 +839,6 @@ class ToDo:
             self.widgets_dict[f"{t} task container"].position = toga.Position(0,0)
 
 
-    def update_task_types(self, load=True, con_cur=None):
-        con, cur = get_connection(self.db_path, con_cur)
-
-        cur.execute("""
-            SELECT id, task_type, due_date FROM tasks
-            WHERE completed_date IS NULL;
-        """)
-        tasks = cur.fetchall()
-
-        task_types = set()
-        updated_tasks = []
-
-        for id, task_type, due_date in tasks:
-            due_date = date.fromisoformat(due_date)
-            if task_type != "daily":
-                if self.type_dates_dict[task_type][0] <= due_date <= self.type_dates_dict[task_type][1]:
-                    pass
-                else:
-                    task_types.add(task_type)
-                    
-                    t = "daily"
-                    if due_date <= self.type_dates_dict[t][0]:
-                        task_types.add(t)
-                        updated_tasks.append((id, t))
-                    else:
-                        for t in ["weekly", "monthly"]:
-                            if self.type_dates_dict[t][0] <= due_date <= self.type_dates_dict[t][1]:
-                                task_types.add(t)
-                                updated_tasks.append((id, t))
-                                break
-        
-        if updated_tasks:
-            cur.executemany(
-                "UPDATE tasks SET task_type = ? WHERE id = ?;", 
-                [(task_type, task_id,) for task_id, task_type in updated_tasks])
-            con.commit()
-            if load:
-                self.load_tasks(types=list(task_types), con_cur=(con, cur))
-
-        close_connection(con, con_cur)
-
-
     async def reset_todo_dialog(self):
         result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to reset To-Do database?"))
         if result:
@@ -890,18 +852,18 @@ class ToDo:
 
         cur.executescript("""
             CREATE TABLE tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            task TEXT NOT NULL,
-            tier TEXT CHECK(tier IN ('routine', 'challenging', 'significant', 'momentous')) NOT NULL,
-            task_type TEXT CHECK(task_type IN ('daily', 'weekly', 'monthly', 'yearly')) NOT NULL,
-            urgency TEXT CHECK(urgency IN ('low', 'medium', 'high')) NOT NULL,
-            created_date DATE DEFAULT (date('now', 'localtime')),
-            due_date DATE NOT NULL,
-            completed_date DATE
-            );    
-            
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task TEXT NOT NULL,
+                tier INTEGER CHECK(tier IN (1, 2, 3, 4)) NOT NULL,  -- 1=routine, 2=challenging, 3=significant, 4=momentous
+                urgency INTEGER CHECK(urgency IN (1, 2, 3)),  -- 1=low, 2=medium, 3=high
+                created_date DATE DEFAULT (date('now', 'localtime')),
+                due_date DATE,
+                completed_date DATE
+            );
+
             CREATE INDEX idx_tasks_tier ON tasks(tier);
-            CREATE INDEX idx_tasks_completed_date ON tasks(completed_date);
+            CREATE INDEX idx_tasks_due_date ON tasks(due_date);
+            CREATE INDEX idx_tasks_completed_date ON tasks(completed_date);    
         """)
         con.commit()
         con.close()
@@ -951,18 +913,20 @@ class ToDo:
         con, cur = get_connection(self.db_path)
 
         cur.execute("""
-            SELECT task, tier, urgency, task_type, due_date FROM tasks
+            SELECT task, tier, urgency, due_date FROM tasks
             WHERE id = ?;
         """, (self.temp_task_id,))
-        task, tier, urgency, task_type, due_date = cur.fetchone()
+        task, tier, urgency, due_date = cur.fetchone()
         
         con.close()
         
+        task_type = self.determine_type(due_date)
+
         self.tt_change = self.dd_change = False
         self.temp_task_type = task_type
         self.edit_input.value = task
-        self.edit_tier.value = tier.capitalize()
-        self.edit_urgency.value = urgency.capitalize()
+        self.edit_tier.value = self.tier_num_to_name[tier].capitalize()
+        self.edit_urgency.value = self.urgency_num_to_name[urgency].capitalize()
         self.edit_type.value = task_type.capitalize()
         self.edit_duedate.min = date.today()
         self.edit_duedate.max = self.type_dates_dict["yearly"][1]
@@ -988,7 +952,7 @@ class ToDo:
                     children=[done, edit],
                     style=Pack(direction=COLUMN, padding=4, height=110, width=84))
                 
-            bottom_str = f"Tier: {task[2].capitalize()}  |  Urgency: {task[3].capitalize()}\nAdded: {task[4]}  |  Due: {task[5]}"
+            bottom_str = f"Tier: {self.tier_num_to_name[task[2]].capitalize()}  |  Urgency: {self.urgency_num_to_name[task[3]].capitalize()}\nAdded: {task[4]}  |  Due: {task[5]}"
         else:
             bottom_str = f"Added: {task[2]}  |  Completed: {task[3]}"
             
@@ -1064,3 +1028,16 @@ class ToDo:
         w.refresh()
 
         self.dd_change = self.tt_change = True
+
+    
+    def determine_type(self, due_date):
+        due_date = date.fromisoformat(due_date)
+        if due_date <= date.today():
+            task_type = "daily"
+        else:
+            for t in ["weekly", "monthly", "yearly"]:
+                if self.type_dates_dict[t][0] <= due_date <= self.type_dates_dict[t][1]:
+                    task_type = t
+                    break
+        
+        return task_type

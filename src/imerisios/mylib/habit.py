@@ -15,6 +15,11 @@ class Habits:
 
         self.widgets_dict = {"habits": {}}
         self.month_num_to_name, self.month_name_to_num = get_month_dicts()
+        self.state_num_to_name = {3: "success", 1: "failure", 2: "skip"}
+        self.state_name_to_num = {v: k for k, v in self.state_num_to_name.items()}
+        self.phase_keys = ["AM", "PM", "N/A", "Completed"]
+        self.phase_num_to_name = {1: "AM", 2: "PM", None: "N/A"}
+        self.phase_name_to_num = {v: k for k, v in self.phase_num_to_name.items()}
         self.data = {"state images": [f"resources/habit/{s}.png" for s in ("success", "failure", "skip")]}
         self.details_setup = True
         self.more_setup = True
@@ -63,6 +68,17 @@ class Habits:
                 self.tracker_list_container
             ], 
             style=Pack(direction=COLUMN, background_color="#393432"))
+        
+        # day phase labels
+        am_label = toga.Label("AM", style=Pack(padding=10, font_size=16, text_align="center", color="#EBF6F7"))
+        pm_label = toga.Label("PM", style=Pack(padding=10, font_size=16, text_align="center", color="#EBF6F7"))
+        na_label = toga.Label("N/A", style=Pack(padding=10, font_size=16, text_align="center", color="#EBF6F7"))
+        completed_label = toga.Label("Completed", style=Pack(padding=10, font_size=16, text_align="center", color="#EBF6F7"))
+
+        self.widgets_dict["AM label"] = am_label
+        self.widgets_dict["PM label"] = pm_label
+        self.widgets_dict["N/A label"] = na_label
+        self.widgets_dict["Completed label"] = completed_label
 
         return tracker_box
     
@@ -170,7 +186,7 @@ class Habits:
                 toga.Label(quotes_top[i+1], 
                 style=Pack(padding=(0,4,4), text_align="right", font_size=7, font_style="italic", color="#EBF6F7")))
         quotes_bottom = [
-            "“What we seek is some kind of compensation for what we put up with.”", "— Nakata, Kafka on the Shore by Haruki Murakami",
+            "“What we seek is some kind of compensation for what we put up with.”", "— Narrator, The Rat by Haruki Murakami",
             "“It has long been an axiom of mine that the little things are infinitely the most important.”", "— Sherlock Holmes, by Arthur Conan Doyle",
             "“The habit of hoping always for better things is actually an obstacle to success.”", "— Stendhal, The Red and the Black",
             "“There is always a philosophy for lack of courage.”", "— Albert Camus, Notebooks (1942-1951)",
@@ -230,19 +246,19 @@ class Habits:
             name TEXT NOT NULL,
             longest_streak INTEGER DEFAULT 0,
             created_date DATE DEFAULT (date('now', 'localtime')),
-            completed_date DATE
+            completed_date DATE,
+            day_phase INTEGER CHECK(day_phase IN (1, 2) OR day_phase IS NULL) -- 1=am, 2=pm
             );
             
             CREATE TABLE IF NOT EXISTS habit_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             habit_id INTEGER NOT NULL,
             record_date DATE DEFAULT (date('now', 'localtime')),
-            state TEXT CHECK(state IN ('success', 'failure', 'skip') OR state IS NULL),
+            state INTEGER CHECK(state IN (1, 2, 3) OR state IS NULL), -- 1=failure, 2=skip, 3=success
             FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE ON UPDATE CASCADE
             );
                           
             CREATE INDEX IF NOT EXISTS idx_habit_records_state ON habit_records(state);
-
             CREATE INDEX IF NOT EXISTS idx_habit_records_date ON habit_records(record_date);    
         """)
         con.commit()
@@ -280,37 +296,50 @@ class Habits:
     
         for d in dates:
             iso = d.isoformat()
+            self.data[iso] = {"AM": [], "PM": [], "N/A": [], "Completed": []}
 
             cur.execute("""
-                SELECT habits.id, habits.name, habit_records.state
+                SELECT habits.id, habits.name, habit_records.state, habits.day_phase
                 FROM habits
-                INNER JOIN habit_records
-                ON habits.id = habit_records.habit_id
-                WHERE habit_records.record_date = ?
-                ORDER BY 
-                    CASE 
-                        WHEN habit_records.state IS NULL THEN 0
-                        WHEN habit_records.state = 'failure' THEN 1
-                        WHEN habit_records.state = 'skip' THEN 2
-                        WHEN habit_records.state = 'success' THEN 3
-                    END,
-                    LOWER(habits.name);
+                INNER JOIN habit_records ON habits.id = habit_records.habit_id
+                WHERE habit_records.record_date = ? AND habit_records.state IS NULL
+                ORDER BY LOWER(habits.name);   
             """, (d,))
-            self.data[iso] = cur.fetchall()
+
+            rows = cur.fetchall()
+
+            for row in rows:
+                day_phase = row[-1]
+                self.data[iso][self.phase_num_to_name[day_phase]].append(row)
             
-            for i in range(len(self.data[iso])):
-                cur.execute("""
-                    SELECT state FROM habit_records
-                    WHERE habit_id = ?
-                    AND record_date <= ?
-                    AND state IS NOT NULL
-                    ORDER BY record_date DESC;
-                """, (self.data[iso][i][0], d,))
-                states = cur.fetchall()
+            cur.execute("""
+                SELECT habits.id, habits.name, habit_records.state, habits.day_phase
+                FROM habits
+                INNER JOIN habit_records ON habits.id = habit_records.habit_id
+                WHERE habit_records.record_date = ? AND habit_records.state IS NOT NULL
+                ORDER BY 
+                    habit_records.state,
+                    LOWER(habits.name);   
+            """, (d,))
 
-                streak = self.calculate_streak(states)
+            rows = cur.fetchall()
 
-                self.data[iso][i] = self.data[iso][i] + (streak,)
+            self.data[iso]["Completed"].extend(rows)
+            
+            for key in self.phase_keys:
+                for i in range(len(self.data[iso][key])):
+                    cur.execute("""
+                        SELECT state FROM habit_records
+                        WHERE habit_id = ?
+                        AND record_date <= ?
+                        AND state IS NOT NULL
+                        ORDER BY record_date DESC;
+                    """, (self.data[iso][key][i][0], d,))
+                    states = cur.fetchall()
+
+                    streak = self.calculate_streak(states)
+
+                    self.data[iso][key][i] = self.data[iso][key][i] + (streak,)
 
         if details:
             cur.execute("""
@@ -346,13 +375,17 @@ class Habits:
                         "No tracked habits on the day.",
                         style=Pack(padding=10, font_size=12, color="#EBF6F7")))
             else:
-                for h in data:
-                    id = h[0]
-                    if d not in self.widgets_dict["habits"]:
-                        self.widgets_dict["habits"][d] = {}
-                    if id not in self.widgets_dict["habits"][d]:
-                        self.widgets_dict["habits"][d][id] = self.get_habit_box(h, d)
-                    list_box.add(self.widgets_dict["habits"][d][id])
+                for key in self.phase_keys:
+                    if data[key]:
+                        list_box.add(self.widgets_dict[f"{key} label"], toga.Divider(style=Pack(background_color="#27221F")))
+
+                        for h in data[key]:
+                            id = h[0]
+                            if d not in self.widgets_dict["habits"]:
+                                self.widgets_dict["habits"][d] = {}
+                            if id not in self.widgets_dict["habits"][d]:
+                                self.widgets_dict["habits"][d][id] = self.get_habit_box(h, d)
+                            list_box.add(self.widgets_dict["habits"][d][id])
                     
         if details:
             for t in ["tracked", "untracked"]:
@@ -394,10 +427,10 @@ class Habits:
         con, cur = get_connection(self.db_path)
 
         cur.execute("""
-            SELECT name, created_date, completed_date, longest_streak FROM habits
+            SELECT name, created_date, completed_date, longest_streak, day_phase FROM habits
             WHERE id = ?;
         """, (id,))
-        name, added_date, stopped_date, longest_streak = cur.fetchone()
+        name, added_date, stopped_date, longest_streak, day_phase = cur.fetchone()
 
         cur.execute("""
             SELECT COUNT(*) FROM habit_records
@@ -407,19 +440,19 @@ class Habits:
 
         cur.execute("""
             SELECT COUNT(*) FROM habit_records
-            WHERE habit_id = ? AND state = 'success';
+            WHERE habit_id = ? AND state = 3;
         """, (id,))
         total_success = cur.fetchone()[0]
 
         cur.execute("""
             SELECT COUNT(*) FROM habit_records
-            WHERE habit_id = ? AND state = 'failure';
+            WHERE habit_id = ? AND state = 1;
         """, (id,))
         total_failure = cur.fetchone()[0]
 
         cur.execute("""
             SELECT COUNT(*) FROM habit_records
-            WHERE habit_id = ? AND state = 'skip';
+            WHERE habit_id = ? AND state = 2;
         """, (id,))
         total_skip = cur.fetchone()[0]
 
@@ -427,7 +460,7 @@ class Habits:
             WITH success_skip AS (
                 SELECT COUNT(*) AS success_skip_count
                 FROM habit_records
-                WHERE habit_id = ? AND state IN ('success', 'skip')
+                WHERE habit_id = ? AND state IN (3, 2)
             ), 
             total AS (
                 SELECT COUNT(*) AS total_count
@@ -478,9 +511,21 @@ class Habits:
             style=Pack(direction=COLUMN))
         
         if self.more_setup:
+            self.widgets_dict["habit_more day_phase label"] = toga.Label(
+                "Day phase:", 
+                style=Pack(flex=0.4, padding=(14,0,14,20), font_size=14, color="#EBF6F7"))
+            self.widgets_dict["habit_more day_phase select"] = toga.Selection(items=["N/A", "AM", "PM"], on_change=self.day_phase_change, style=Pack(flex=0.6, padding=(6,16,0), height=44))
+        
             self.widgets_dict["habit_more dates label"] = toga.Label(
                 "Dates", 
                 style=Pack(padding=14, text_align="center", font_size=14, color="#EBF6F7"))
+            
+        self.widgets_dict["habit_more day_phase select"].value = self.phase_num_to_name[day_phase]
+
+        day_phase_box = toga.Box(
+            children=[self.widgets_dict["habit_more day_phase label"], self.widgets_dict["habit_more day_phase select"]],
+            style=Pack(direction=ROW))    
+        
         self.dates_label = self.widgets_dict["habit_more dates label"]
         self.added_label = toga.Label(
             f"Added: {added_date}", 
@@ -633,6 +678,7 @@ class Habits:
         
         self.more_box.add(
             self.habit_more_label_box, toga.Divider(style=Pack(background_color="#27221F")), 
+            day_phase_box, toga.Divider(style=Pack(background_color="#27221F")),
             self.habit_dates_box, toga.Divider(style=Pack(background_color="#27221F")), 
             total_box, toga.Divider(style=Pack(background_color="#27221F")), 
             completion_rate_label, toga.Divider(style=Pack(background_color="#27221F")), 
@@ -675,7 +721,7 @@ class Habits:
 
     async def change_habit_state(self, splt):
         habit_id = int(splt[0])
-        state = splt[2]
+        state = self.state_name_to_num[splt[2]]
         record_date = self.tracker_date.value
 
         con, cur = get_connection(self.db_path)
@@ -944,6 +990,7 @@ class Habits:
             self.habit_get_data(dates=[date.fromisoformat(d[0]) for d in dates], details=True, tracking=True, con_cur=(con, cur))
 
             for d in dates:
+                d = d[0]
                 if d in self.widgets_dict["habits"]:
                     if id in self.widgets_dict["habits"][d]:
                         del self.widgets_dict["habits"][d][id]
@@ -963,9 +1010,9 @@ class Habits:
     def calculate_streak(self, states: list) -> int:
         streak = 0
         for s in states:
-            if s[0] == "success":
+            if s[0] == 3:
                 streak += 1
-            elif s[0] == "failure":
+            elif s[0] == 1:
                 break
         return streak
     
@@ -988,14 +1035,15 @@ class Habits:
             name TEXT NOT NULL,
             longest_streak INTEGER DEFAULT 0,
             created_date DATE DEFAULT (date('now', 'localtime')),
-            completed_date DATE
+            completed_date DATE,
+            day_phase INTEGER CHECK(day_phase IN (1, 2) OR day_phase IS NULL) -- 1=am, 2=pm
             );
                           
             CREATE TABLE habit_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             habit_id INTEGER NOT NULL,
             record_date DATE DEFAULT (date('now', 'localtime')),
-            state TEXT CHECK(state IN ('success', 'failure', 'skip')),
+            state INTEGER CHECK(state IN (1, 2, 3) OR state IS NULL),
             FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE ON UPDATE CASCADE
             );
                           
@@ -1058,11 +1106,12 @@ class Habits:
                 if habit[2]:
                     img_boxes = [toga.Box(style=Pack(direction=COLUMN, flex=0.33)) for i in range(3)]
                     for i in range(3):
-                        if habit[2] == states[i]:
+                        if self.state_num_to_name[habit[2]] == states[i]:
                             img_boxes[i].add(toga.ImageView(toga.Image(self.data["state images"][i]), style=Pack(flex=1, alignment="center", height=40)))
                             break
                     for i in range(3):
                         button_box.add(img_boxes[i])
+
                 else:
                     for s in states:
                         state_button_id = f"{id} habit {s} button"
@@ -1070,11 +1119,16 @@ class Habits:
                             s, id=state_button_id, on_press=self.change_habit_state_dialog, 
                             style=Pack(flex=0.33, height=42, font_size=12, color="#EBF6F7", background_color="#27221F"))
                         button_box.add(button)
+
                 self.widgets_dict["habits"][tracker_date][button_id] = button_box
             button = self.widgets_dict["habits"][tracker_date][button_id]
+            
+            temp_label = f"Current streak: {habit[-1]}"
+            temp_label += f"  |  Day phase: {self.phase_num_to_name[habit[3]]}" if habit[2] else ""
             bottom_label = toga.Label(
-                f"Current streak: {habit[3]}", 
+                temp_label,
                 style=Pack(padding=(4,4,0), font_size=11, color="#EBF6F7"))
+            
         else:
             button_id = f"{id} habit more button"
             if button_id not in self.widgets_dict["habits"]:
@@ -1137,3 +1191,43 @@ class Habits:
             if val != mx:
                 w.value = val + timedelta(1)
                 
+
+    def day_phase_change(self, widget):
+        id = self.temp_habit_id
+        day_phase = self.phase_name_to_num[widget.value]
+        con, cur = get_connection(self.db_path)
+
+        cur.execute("SELECT day_phase FROM habits WHERE id = ?;", (id,))
+        old_day_phase = cur.fetchone()[0]
+        if old_day_phase == day_phase:
+            pass
+        else:
+            cur.execute("""
+                SELECT record_date FROM habit_records
+                WHERE habit_id = ?
+                AND record_date >= ?;
+            """, (id, date.today()-timedelta(days=6)))         
+            dates = cur.fetchall()
+
+            cur.execute("""
+                UPDATE habits
+                SET day_phase = ?
+                WHERE id = ?;
+            """, (day_phase, id,))
+            con.commit()
+
+            self.habit_get_data(dates=[date.fromisoformat(d[0]) for d in dates], details=False, tracking=False, con_cur=(con, cur))
+
+            con.close()
+
+            for d in dates:
+                d = d[0]
+                if d in self.widgets_dict["habits"]:
+                    if id in self.widgets_dict["habits"][d]:
+                        del self.widgets_dict["habits"][d][id]
+            if id in self.widgets_dict["habits"]:
+                del self.widgets_dict["habits"][id]
+
+            self.load_habits(None, details=False)
+        
+        con.close()

@@ -5,6 +5,7 @@ import toga
 from toga.style import Pack
 from toga.constants import COLUMN, ROW
 from datetime import date
+import sqlite3 as sql
 import os
 import shutil
 import threading
@@ -17,6 +18,7 @@ from imerisios.mylib.todo import ToDo
 from imerisios.mylib.habit import Habits
 from imerisios.mylib.journal import Journal
 from imerisios.mylib.ranking import Rankings
+from imerisios.mylib.tools import get_connection
 
 
 class Imerisios(toga.App):
@@ -292,6 +294,217 @@ class Imerisios(toga.App):
                 "Reset ranking database", on_press=reset_ranking_dialog, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
             
+            ## general
+            async def update_databases(widget):
+                if await self.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to update all databases?")):
+                    updated = []
+
+                    ### ranking
+                    db_path = os.path.join(self.app_dir, "ranking.db")
+                    con, cur = get_connection(db_path)
+                    try:
+                        cur.executescript("""
+                            -- Drop indexes if they exist
+                            DROP INDEX IF EXISTS idx_movie_stars;
+                            DROP INDEX IF EXISTS idx_series_stars;
+
+                            -- Add note column to each table only if it doesn't exist
+                            BEGIN TRANSACTION;
+                            PRAGMA foreign_keys = OFF;
+
+                            -- Helper table to list tables and columns to check
+                            CREATE TEMP TABLE IF NOT EXISTS temp_schema_check (table_name TEXT, column_name TEXT);
+                            INSERT INTO temp_schema_check VALUES 
+                                ('book_entries', 'note'),
+                                ('movie_entries', 'note'),
+                                ('series_entries', 'note'),
+                                ('music_entries', 'note');
+
+                            -- Create a temp table with ALTER queries for tables needing the column
+                            CREATE TEMP TABLE temp_queries AS
+                            SELECT 'ALTER TABLE ' || t.table_name || ' ADD COLUMN note TEXT' AS query
+                            FROM temp_schema_check t
+                            WHERE NOT EXISTS (
+                                SELECT 1 
+                                FROM pragma_table_info(t.table_name) 
+                                WHERE name = t.column_name
+                            );
+
+                            COMMIT;
+                            PRAGMA foreign_keys = ON;
+                            DROP TABLE IF EXISTS temp_schema_check;
+                            -- Note: temp_queries is dropped after use in Python
+                        """)
+
+                        cur.execute("SELECT query FROM temp_queries WHERE query IS NOT NULL")
+                        for row in cur.fetchall():
+                            cur.execute(row[0])
+
+                        cur.execute("DROP TABLE IF EXISTS temp_queries")
+
+                        con.commit()
+
+                        updated.append("ranking.db")               
+
+                    except sql.OperationalError as e:
+                        print(f"Error updating databases: {e}")
+                        await self.dialog(toga.InfoDialog("Error", "An error occurred while updating ranking database."))
+                    con.close()
+
+                    db_path = os.path.join(self.app_dir, "habit.db")
+                    con, cur = get_connection(db_path)
+
+                    try:
+                        cur.execute("PRAGMA table_info(habits);")
+                        columns = cur.fetchall()
+
+                        column_names = [column[1] for column in columns]
+                        if 'day_phase' not in column_names:
+                            cur.execute("""
+                                ALTER TABLE habits
+                                ADD COLUMN day_phase INTEGER CHECK(day_phase IN (1, 2) OR day_phase IS NULL);
+                            """)
+
+                        cur.executescript("""
+                            -- Drop the index on state (to avoid issues with type change)
+                            DROP INDEX IF EXISTS idx_habit_records_state;
+                            DROP INDEX IF EXISTS idx_habit_records_date;
+
+                            -- Create a temporary table with the new schema
+                            BEGIN TRANSACTION;
+                            PRAGMA foreign_keys = OFF;
+
+                            CREATE TABLE temp_habit_records (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                habit_id INTEGER NOT NULL,
+                                record_date DATE DEFAULT (date('now', 'localtime')),
+                                state INTEGER CHECK(state IN (1, 2, 3) OR state IS NULL),  -- New integer state with constraint
+                                FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE ON UPDATE CASCADE
+                            );
+
+                            -- Migrate data with state conversion
+                            INSERT INTO temp_habit_records (id, habit_id, record_date, state)
+                            SELECT 
+                                id,
+                                habit_id,
+                                record_date,
+                                CASE state
+                                    WHEN 'failure' THEN 1
+                                    WHEN 'skip' THEN 2
+                                    WHEN 'success' THEN 3
+                                    ELSE NULL  -- For NULL or unexpected values
+                                END
+                            FROM habit_records;
+
+                            -- Drop the old table and rename the new one
+                            DROP TABLE habit_records;
+                            ALTER TABLE temp_habit_records RENAME TO habit_records;
+
+                            -- Recreate indexes
+                            CREATE INDEX IF NOT EXISTS idx_habit_records_state ON habit_records(state);
+                            CREATE INDEX IF NOT EXISTS idx_habit_records_date ON habit_records(record_date);
+
+                            COMMIT;
+                            PRAGMA foreign_keys = ON;
+                        """)
+
+                        con.commit()
+
+                        updated.append("habit.db")
+
+                    except sql.OperationalError as e:
+                        print(f"Error updating databases: {e}")
+                        await self.dialog(toga.InfoDialog("Error", "An error occurred while updating habit database."))
+
+                    con.close()
+
+                    ### todo
+                    db_path = os.path.join(self.app_dir, "todo.db")
+                    con, cur = get_connection(db_path)
+
+                    try:
+                        cur.executescript("""
+                            -- Drop the index on tier (to avoid issues with type change)
+                            DROP INDEX IF EXISTS idx_tasks_tier;
+
+                            -- Create a temporary table with the new schema
+                            BEGIN TRANSACTION;
+                            PRAGMA foreign_keys = OFF;
+
+                            CREATE TABLE temp_tasks (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                task TEXT NOT NULL,
+                                tier INTEGER CHECK(tier IN (1, 2, 3, 4)) NOT NULL,
+                                urgency INTEGER CHECK(urgency IN (1, 2, 3)),
+                                created_date DATE DEFAULT (date('now', 'localtime')),
+                                due_date DATE,
+                                completed_date DATE
+                            );
+
+                            -- Migrate data with conversions, dropping task_type
+                            INSERT INTO temp_tasks (id, task, tier, urgency, created_date, due_date, completed_date)
+                            SELECT 
+                                id,
+                                task,
+                                CASE tier
+                                    WHEN 'routine' THEN 1
+                                    WHEN 'challenging' THEN 2
+                                    WHEN 'significant' THEN 3
+                                    WHEN 'momentous' THEN 4
+                                    WHEN 1 THEN 1
+                                    WHEN 2 THEN 2
+                                    WHEN 3 THEN 3
+                                    WHEN 4 THEN 4
+                                END,
+                                CASE urgency
+                                    WHEN 'low' THEN 1
+                                    WHEN 'medium' THEN 2
+                                    WHEN 'high' THEN 3
+                                    WHEN 1 THEN 1
+                                    WHEN 2 THEN 2
+                                    WHEN 3 THEN 3
+                                END,
+                                created_date,
+                                due_date,
+                                completed_date
+                            FROM tasks;
+
+                            -- Drop the old table and rename the new one
+                            DROP TABLE tasks;
+                            ALTER TABLE temp_tasks RENAME TO tasks;
+
+                            -- Recreate indexes
+                            CREATE INDEX IF NOT EXISTS idx_tasks_tier ON tasks(tier);
+                            CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
+                            CREATE INDEX IF NOT EXISTS idx_tasks_completed_date ON tasks(completed_date);
+
+                            COMMIT;
+                            PRAGMA foreign_keys = ON;
+                        """)
+
+                        con.commit()
+
+                        cur.execute("SELECT id FROM tasks WHERE completed_date IS NOT NULL")
+                        completed_tasks = cur.fetchall()
+                        if completed_tasks:
+                            completed_task_ids = [row[0] for row in completed_tasks]  # Extract IDs
+
+                            placeholders = ", ".join("?" * len(completed_task_ids))  # Create ?, ?, ? placeholders
+                            query = f"UPDATE tasks SET urgency = NULL, due_date = NULL WHERE id IN ({placeholders})"
+                            cur.execute(query, completed_task_ids)
+
+                            con.commit()
+
+                        updated.append("todo.db")
+
+                    except sql.OperationalError as e:
+                        print(f"Error updating databases: {e}")
+                        await self.dialog(toga.InfoDialog("Error", "An error occurred while updating todo database."))
+
+                    con.close()
+
+                    await self.dialog(toga.InfoDialog("Success", f"Databases {updated} have been updated successfully."))
+
             general_label = toga.Label(
                 "General", 
                 style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
@@ -301,8 +514,11 @@ class Imerisios(toga.App):
             restore_databases_button = toga.Button(
                 "Restore databases", on_press=self.restore_databases, 
                 style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
+            update_databases_button = toga.Button(
+                "Update databases", on_press=update_databases, 
+                style=Pack(height=120, padding=4, font_size=16, color="#EBF6F7", background_color="#27221F"))
             
-            s_div = [toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")) for _ in range(10)] 
+            s_div = [toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")) for _ in range(11)] 
             div = [toga.Divider(style=Pack(background_color="#27221F")) for _ in range(4)]
 
             box = toga.Box(
@@ -311,7 +527,7 @@ class Imerisios(toga.App):
                     habit_label, s_div[1], reset_today_habit_records_button, s_div[2], add_last_week_records_button, s_div[8], reset_habit_button, div[1],
                     journal_label, s_div[3], journal_remove_date_box, journal_remove_button, s_div[9], reset_journal_button, div[2],
                     ranking_label, s_div[4], type_box, old_tag, new_tag, replace_tag_button, s_div[5], reset_ranking_button, div[3],
-                    general_label, s_div[6], backup_databases_button, s_div[7], restore_databases_button
+                    general_label, s_div[6], backup_databases_button, s_div[7], restore_databases_button, s_div[10], update_databases_button
                 ], 
                 style=Pack(direction=COLUMN, background_color="#393432"))
             self.settings_box = toga.ScrollContainer(content=box)

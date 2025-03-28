@@ -128,7 +128,9 @@ class Journal:
             children=[date_selection_box, today_button],
             style=Pack(direction=COLUMN))
 
-        self.journal_entries_input = toga.MultilineTextInput(placeholder="your entry", style=Pack(flex=0.6, padding=(0,11), font_size=12, color="#EBF6F7", background_color="#27221F"))
+        self.journal_entries_input = toga.MultilineTextInput(
+            placeholder="your entry", 
+            style=Pack(flex=0.6, padding=(0,11), font_size=12, color="#EBF6F7", background_color="#27221F"))
 
         self.journal_entries_save_button = toga.Button(
             "Save", on_press=self.save_entry_dialog, 

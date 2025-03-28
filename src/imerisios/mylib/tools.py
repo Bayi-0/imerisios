@@ -63,11 +63,11 @@ def create_calendar_image(year, month, file_name, marks):
             if day != 0:  # 0 means no day in this month
                 color = neutral_text_color
                 if day in marks:
-                    if marks[day] == "success":
+                    if marks[day] == 3:
                         color = success_color
-                    elif marks[day] == "failure":
+                    elif marks[day] == 1:
                         color = failure_color
-                    elif marks[day] == "skip":
+                    elif marks[day] == 2:
                         color = skip_color
                 draw.text((day_index * 100 + 50, week_index * 60 + 150), str(day), fill=color, font=font)
 
@@ -82,7 +82,7 @@ def get_month_dicts():
     return month_num_to_name, month_name_to_num
 
 
-def get_ranges(items, chunk=20):
+def get_ranges(items, chunk=10):
         ranges = []
         items_number = len(items)
         chunk_size = chunk

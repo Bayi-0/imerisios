@@ -339,3 +339,24 @@
 
 ### Removed
 - N/A
+
+
+## [v2.8.0] - 2025-03-28
+
+### Added
+- Note column for ranking entries;
+- Random() in the end of any sorting order in rankings;
+- Deleting data that is no more needed in todo;
+- Day phase for habits;
+- Update databases button in the settings to adapt your existing databases.
+
+### Changed
+- Ranges' chunk size to 10;
+- The way some data is stored (less memory occupied now).
+
+### Fixed
+- Fixed quote's origin;
+- Fixed habit tracker records not being changed after a rename.
+
+### Removed
+- Stars column for movie/series entries in rankings.
