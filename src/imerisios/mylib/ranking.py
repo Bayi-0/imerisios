@@ -1023,9 +1023,9 @@ class Rankings:
         else:    
             box = self.widgets_dict[f"{tab} top_box"]
             box.clear()
-            box.add(
-                self.widgets_dict[f"{tab} title label"], self.widgets_dict[f"{tab} title"], self.widgets_dict[f"{tab} switch"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                self.widgets_dict[f"{tab} {t}_person label"], self.widgets_dict[f"{tab} person"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")))
+            if t != "music":
+                box.add(self.widgets_dict[f"{tab} title label"], self.widgets_dict[f"{tab} title"], self.widgets_dict[f"{tab} switch"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")))
+            box.add(self.widgets_dict[f"{tab} {t}_person label"], self.widgets_dict[f"{tab} person"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")))
             if t != "music":
                 box.add(self.widgets_dict[f"{tab} year box"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")))
             box.add(
