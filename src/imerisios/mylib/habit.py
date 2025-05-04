@@ -370,13 +370,11 @@ class Habits:
 
             d = self.tracker_date.value.isoformat()
             data = self.data[self.tracker_date.value.isoformat()]
-            if len(data) == 0:
-                    list_box.add(toga.Label(
-                        "No tracked habits on the day.",
-                        style=Pack(padding=10, font_size=12, color="#EBF6F7")))
-            else:
+            any_habits = False
+            if data:
                 for key in self.phase_keys:
                     if data[key]:
+                        any_habits = True
                         list_box.add(self.widgets_dict[f"{key} label"], toga.Divider(style=Pack(background_color="#27221F")))
 
                         for h in data[key]:
@@ -386,7 +384,11 @@ class Habits:
                             if id not in self.widgets_dict["habits"][d]:
                                 self.widgets_dict["habits"][d][id] = self.get_habit_box(h, d)
                             list_box.add(self.widgets_dict["habits"][d][id])
-                    
+            if not any_habits:
+                list_box.add(toga.Label(
+                    "No tracked habits on the day.",
+                    style=Pack(padding=10, font_size=12, color="#EBF6F7")))
+                
         if details:
             for t in ["tracked", "untracked"]:
                 data = self.data[t]

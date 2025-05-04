@@ -2,7 +2,7 @@
 [tool.briefcase]
 project_name = "Imerisios"
 bundle = "com.amateru"
-version = "2.8.1"
+version = "2.8.2"
 url = "https://amateru.com/imerisios"
 license = "BSD license"
 author = "Vladyslav Bashchuk"

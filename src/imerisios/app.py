@@ -134,6 +134,13 @@ class Imerisios(toga.App):
             self.menu_box = toga.Box(
                 children=[coin_box, todo_box, habit_box, journal_box, ranking_box], 
                 style=Pack(direction=COLUMN, background_color="#393432"))
+
+            ## loading screen
+            loading_label = toga.Label(
+                "Loading...", 
+                style=Pack(text_align="center", font_weight="bold", font_size=24, color="#EBF6F7"))
+            
+            self.loading_box = toga.Box(children=[loading_label], style=Pack(direction=COLUMN, background_color="#393432"))
         
         # coin flip
         if coin_flip:
