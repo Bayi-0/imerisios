@@ -135,7 +135,7 @@ class Journal:
         self.journal_entries_save_button = toga.Button(
             "Save", on_press=self.save_entry_dialog, 
             style=Pack(height=120, padding=11, font_size=24, color="#EBF6F7", background_color="#27221F"))
-        self.journal_entries_save_box = toga.Box(style=Pack(direction=COLUMN, flex=0.21))
+        self.journal_entries_save_box = toga.Box(style=Pack(direction=COLUMN))
         
         entries_box = toga.Box(
             children=[
@@ -218,7 +218,7 @@ class Journal:
         button = toga.Button(
             "Add", on_press=self.add_note, 
             style=Pack(height=120, padding=11, font_size=24, color="#EBF6F7", background_color="#27221F"))
-        bottom_box = toga.Box(children=[button], style=Pack(direction=COLUMN, flex=0.2))
+        bottom_box = toga.Box(children=[button], style=Pack(direction=COLUMN))
 
         note_add_box = toga.Box(
             children=[
@@ -266,7 +266,7 @@ class Journal:
             style=Pack(flex=0.5, height=120, padding=(11,11,11,4), font_size=24, color="#EBF6F7", background_color="#27221F"))
         bottom_box = toga.Box(
             children=[remove_button, save_button], 
-            style=Pack(direction=ROW, flex=0.2))
+            style=Pack(direction=ROW))
         
         note_edit_box = toga.Box(
             children=[

@@ -383,10 +383,12 @@
 - N/A
 
 ### Changed
-- The icon.
+- The icon;
+- Minor design decisions.
 
 ### Fixed
-- Made the "no habits tracked on the day" message show up again when needed.
+- Made the "no habits tracked on the day" message show up again when needed;
+- Partially solved (hopefully) the no-responsive-design problem. 
 
 ### Removed
 - N/A

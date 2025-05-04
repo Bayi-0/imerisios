@@ -91,7 +91,7 @@ class ToDo:
         button = toga.Button(
             "Add", on_press=self.add_task, 
             style=Pack(height=120, padding=11, font_size=24, color="#EBF6F7", background_color="#27221F"))
-        bottom_box = toga.Box(children=[button], style=Pack(direction=COLUMN, flex=0.18))
+        bottom_box = toga.Box(children=[button], style=Pack(direction=COLUMN))
 
         add_box = toga.Box(
             children=[
@@ -176,7 +176,7 @@ class ToDo:
             style=Pack(flex=0.5, height=120, padding=(11,11,11,4), font_size=24, color="#EBF6F7", background_color="#27221F"))
         bottom_box = toga.Box(
             children=[remove_button, save_button], 
-            style=Pack(direction=ROW, flex=0.18))
+            style=Pack(direction=ROW))
         
         edit_box = toga.Box(
             children=[

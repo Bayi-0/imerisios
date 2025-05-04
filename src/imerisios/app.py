@@ -23,6 +23,7 @@ from imerisios.mylib.tools import get_connection
 
 class Imerisios(toga.App):
     def startup(self):
+        self.sizes = self.screens[0].size
         # app directory
         self.app_dir = self.paths.data
         if not os.path.exists(self.app_dir):
@@ -98,26 +99,27 @@ class Imerisios(toga.App):
         scheduler_thread = threading.Thread(target=self.run_scheduler)
         scheduler_thread.daemon = True
         scheduler_thread.start()
-
+        
 
     def setup_ui(self, menu=False, settings=False, coin_flip=False, todo=False, habits=False, journal=False, rankings=False):
         # menu
         if menu:
+            button_height = int(self.sizes[1] / 5 * 0.925)
             coin_button = toga.Button(
                 "Coin flip", on_press=self.open_coin, 
-                style=Pack(flex=0.5, height=154, font_size=24, color="#EBF6F7", background_color="#27221F"))
+                style=Pack(flex=0.5, height=button_height, font_size=24, color="#EBF6F7", background_color="#27221F"))
             todo_button = toga.Button(
                 "To-do", on_press=self.open_todo, 
-                style=Pack(flex=0.5, height=154, font_size=24, color="#EBF6F7", background_color="#27221F"))
+                style=Pack(flex=0.5, height=button_height, font_size=24, color="#EBF6F7", background_color="#27221F"))
             habit_button = toga.Button(
                 "Habits", on_press=self.open_habit_tracker, 
-                style=Pack(flex=0.5, height=154, font_size=24, color="#EBF6F7", background_color="#27221F"))
+                style=Pack(flex=0.5, height=button_height, font_size=24, color="#EBF6F7", background_color="#27221F"))
             journal_button = toga.Button(
                 "Journal", on_press=self.open_journal, 
-                style=Pack(flex=0.5, height=154, font_size=24, color="#EBF6F7", background_color="#27221F"))
+                style=Pack(flex=0.5, height=button_height, font_size=24, color="#EBF6F7", background_color="#27221F"))
             ranking_button = toga.Button(
                 "Rankings", on_press=self.open_ranking, 
-                style=Pack(flex=0.5, height=154, font_size=24, color="#EBF6F7", background_color="#27221F"))
+                style=Pack(flex=0.5, height=button_height, font_size=24, color="#EBF6F7", background_color="#27221F"))
             
             coin_image = toga.ImageView(toga.Image("resources/menu/coin.png"), style=Pack(flex=0.5, padding=(2,0,0)))
             todo_image = toga.ImageView(toga.Image("resources/menu/todo.png"), style=Pack(flex=0.5, padding=(0,0,2)))

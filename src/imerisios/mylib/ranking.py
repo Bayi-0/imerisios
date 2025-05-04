@@ -332,7 +332,7 @@ class Rankings:
         button = toga.Button(
             "Add", on_press=self.add_entry, 
             style=Pack(height=120, padding=11, font_size=24, color="#EBF6F7", background_color="#27221F"))
-        bottom_box = toga.Box(children=[button], style=Pack(direction=COLUMN, flex=0.19))
+        bottom_box = toga.Box(children=[button], style=Pack(direction=COLUMN))
 
         # return box
         add_box = toga.Box(
@@ -350,7 +350,7 @@ class Rankings:
     def get_edit_entry_box(self):
         # edit box label
         label = toga.Label(
-            "Edit the Entry", 
+            "Read/Edit the Entry", 
             style=Pack(padding=14, text_align="center", font_weight="bold", font_size=18, color="#EBF6F7"))
         
         # type box
@@ -467,7 +467,7 @@ class Rankings:
         save_button = toga.Button(
                 "Save", on_press=self.save_entry_dialog, 
                 style=Pack(flex=0.5, height=120, padding=(11,11,11,4), font_size=24, color="#EBF6F7", background_color="#27221F"))
-        bottom_box = toga.Box(children=[remove_button, save_button], style=Pack(direction=ROW, flex=0.19))
+        bottom_box = toga.Box(children=[remove_button, save_button], style=Pack(direction=ROW))
 
         # return box
         edit_box = toga.Box(
@@ -1454,7 +1454,7 @@ class Rankings:
         if edit_button:
             if (button_id := f"{id} edit_button") not in self.widgets_dict["entries"][entry_type]:
                 self.widgets_dict["entries"][entry_type][button_id] = toga.Button(
-                    "Edit", id=button_id, on_press=self.app.open_ranking_edit_entry, 
+                    "Read/Edit", id=button_id, on_press=self.app.open_ranking_edit_entry, 
                     style=Pack(padding=4, height=42, font_size=12, color="#EBF6F7", background_color="#27221F"))
             children.append(self.widgets_dict["entries"][entry_type][button_id])
         children.append(toga.Divider(style=Pack(background_color="#27221F")))
