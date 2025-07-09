@@ -2,7 +2,7 @@ import toga
 from toga.style import Pack
 from toga.constants import COLUMN, ROW
 import sqlite3 as sql
-from imerisios.mylib.tools import length_check, get_connection, close_connection, get_ranges, change_range, set_range
+from imerisios.mylib.tools import get_back_next_buttons, reverse_dict, length_check, get_connection, close_connection, get_ranges, change_range, set_range
 from datetime import date
 from titlecase import titlecase
 from nameparser import HumanName
@@ -13,745 +13,544 @@ class Rankings:
         self.app = app
         self.db_path = db_path
 
-        self.ranking_types = ["book", "movie", "series", "music"]
-        self.data = {"rankings": {}}
-        self.widgets_dict = {"entries": {t:{} for t in self.ranking_types}}
-        self.type_to_person = {"book": "author", "movie": "director", "series": "creator", "music": "artist"}
-        self.int_to_grade = {6: 'S', 5: 'A', 4: 'B', 3: 'C', 2: 'D', 1: 'E'}
-        self.grade_to_int = {v: k for k, v in self.int_to_grade.items()}
+        self.strings = self.app.strings["ranking"]
+        self.strings_c = self.app.strings["common"]
+
+        self.tab_on = ""
+        self.widgets_load_lists = {}
+
+        crt = (["—", self.strings["grade"], self.strings["title"]], [self.strings_c["year"], self.strings["added_date"]])
+        self.data = {
+            "rankings": {}, 
+            "filters": {},
+            "categories": ["book", "movie", "series", "music"],
+            "criteria": {
+                "book": crt[0] + [self.strings["author"]] + crt[1],
+                "movie": crt[0] + [self.strings["director"]] + crt[1],
+                "series": crt[0] + [self.strings["creator"]] + crt[1],
+                "music": crt[0][:2] + [self.strings["artist"]] + crt[1][-1:]
+            },
+            "grades": ["E", "D", "C", "B", "A", "S"]
+        }
+        self.widgets_dict = {"entries": {t:{} for t in self.data["categories"]}}
+
+        self.maps = {
+            "category_to_person": {"book": "author", "movie": "director", "series": "creator", "music": "artist"},
+            "num_to_name": {i + 1: self.data["grades"][i] for i in range(len(self.data["grades"]))},
+            "localized_to_system": 
+                {self.strings[k]: k for k in ["grade", "title", "added_date"]} | 
+                {k: v for k, v in zip(self.strings["categories"], self.data["categories"])}
+        }
+        self.maps["name_to_num"] = reverse_dict(self.maps["num_to_name"])
+        self.maps["localized_to_system"]["year"] = self.strings_c["year"]
+
+
+    @property
+    def clrs(self):
+        return self.app.clrs
+    
+    
+    @property
+    def today(self):
+        return self.app.today
+    
+
+    def reg(self, widgets=[]):
+        self.app.reg(widgets)
+    
+
+    def get_div(self, padding=0):
+        return self.app.get_div(padding=padding)
+    
+
+    def get_label(self, txt, padding=(18,18,0)):
+        return toga.Label(
+            txt, 
+            style=Pack(padding=padding, font_size=14, color=self.clrs[2])
+        )
+    
 
     def get_list_box(self):
-        # book ranking
-        book_label = toga.Label(
-            "Book Ranking", 
-            style=Pack(flex=0.09, padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
-        
-        sort_button = toga.Button(
-            "Sort & Filter", id="book sort button", 
-            on_press=self.app.open_ranking_sort, 
-            style=Pack(flex=0.08, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        book_sort_box = toga.Box(children=[sort_button], style=Pack(direction=COLUMN))
+        boxes = []
+        for i in range(len(self.data["categories"])):
+            t = self.data["categories"][i]
+            label = toga.Label(
+                self.strings["rankings_labels"][i], 
+                style=Pack(flex=0.09, padding=(14,20), text_align="center", font_weight="bold", font_size=18, color=self.clrs[2])
+            )
+            
+            sort_button = toga.Button(
+                self.strings["sort_filter_label"], id=f"{t} sort button", 
+                on_press=self.app.open_ranking_sort, 
+                style=Pack(flex=0.08, padding=4, height=44, font_size=13, color=self.clrs[2], background_color=self.clrs[1])
+            )
+            sort_box = toga.Box(children=[sort_button], style=Pack(direction=COLUMN))
 
-        back_button = toga.Button(
-            "<", id="book back button",
-            on_press=self.change_range, 
-            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        next_button = toga.Button(
-            ">", id="book next button",
-            on_press=self.change_range, 
-            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        self.book_range = toga.Selection(
-            id="book range", 
-            on_change=self.load_rankings,
-            style=Pack(flex=0.6, padding=4, height=44))
-        self.widgets_dict["book range"] = self.book_range
-        book_range_box = toga.Box(
-            children=[back_button, self.book_range, next_button],
-            style=Pack(direction=ROW))
-        
-        book_ranking_box = toga.Box(id="book ranking box", style=Pack(direction=COLUMN))
-        self.widgets_dict["book ranking box"] = book_ranking_box
-        book_ranking_container = toga.ScrollContainer(content=book_ranking_box, horizontal=False, style=Pack(flex=0.75))
-        self.widgets_dict["book ranking container"] = book_ranking_container
+            back_next_buttons = get_back_next_buttons(id=t, func=lambda button: change_range(button, widgets=self.widgets_dict), color=self.clrs[2], background_color=self.clrs[1])
 
-        book_box = toga.Box(
-            children=[
-                book_label, toga.Divider(style=Pack(background_color="#27221F")), 
-                book_sort_box, toga.Divider(style=Pack(background_color="#27221F")), 
-                book_range_box, toga.Divider(style=Pack(background_color="#27221F")),
-                book_ranking_container
-            ],
-            style=Pack(direction=COLUMN, background_color="#393432"))
-        
-        # movie ranking
-        movie_label = toga.Label(
-            "Movie Ranking", 
-            style=Pack(flex=0.09, padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
-        
-        sort_button = toga.Button(
-            "Sort & Filter", id="movie sort button", 
-            on_press=self.app.open_ranking_sort, 
-            style=Pack(flex=0.08, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        movie_sort_box = toga.Box(children=[sort_button], style=Pack(direction=COLUMN))
+            self.widgets_dict[f"{t} range"] = toga.Selection(
+                id=f"{t} range", 
+                on_change=self.load_rankings,
+                style=Pack(flex=0.6, padding=4, height=44)
+            )
+            
+            range_box = toga.Box(
+                children=[back_next_buttons[0], self.widgets_dict[f"{t} range"], back_next_buttons[1]],
+                style=Pack(direction=ROW)
+            )
+            
+            self.widgets_dict[f"{t} box"] = toga.Box(id=f"{t} box", style=Pack(direction=COLUMN))
+            self.widgets_dict[f"{t} container"] = toga.ScrollContainer(content=self.widgets_dict[f"{t} box"], horizontal=False, style=Pack(flex=0.75))
 
-        back_button = toga.Button(
-            "<", id="movie back button",
-            on_press=self.change_range, 
-            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        next_button = toga.Button(
-            ">", id="movie next button",
-            on_press=self.change_range, 
-            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        self.movie_range = toga.Selection(
-            id="movie range", 
-            on_change=self.load_rankings,
-            style=Pack(flex=0.6, padding=4, height=44))
-        self.widgets_dict["movie range"] = self.movie_range
-        movie_range_box = toga.Box(
-            children=[back_button, self.movie_range, next_button],
-            style=Pack(direction=ROW))
-        
-        movie_ranking_box = toga.Box(id="movie ranking box", style=Pack(direction=COLUMN))
-        self.widgets_dict["movie ranking box"] = movie_ranking_box
-        movie_ranking_container = toga.ScrollContainer(content=movie_ranking_box, horizontal=False, style=Pack(flex=0.75))
-        self.widgets_dict["movie ranking container"] = movie_ranking_container
+            self.widgets_dict[f"{t} no_entries label"] = toga.Label(
+                self.strings["no_entries_label"],
+                style=Pack(padding=10, font_size=12, color=self.clrs[2])
+            )
 
-        movie_box = toga.Box(
-            children=[
-                movie_label, toga.Divider(style=Pack(background_color="#27221F")), 
-                movie_sort_box, toga.Divider(style=Pack(background_color="#27221F")), 
-                movie_range_box, toga.Divider(style=Pack(background_color="#27221F")),
-                movie_ranking_container
-            ],
-            style=Pack(direction=COLUMN, background_color="#393432"))
-        
-        # series ranking
-        series_label = toga.Label(
-            "Series Ranking", 
-            style=Pack(flex=0.09, padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
-        
-        sort_button = toga.Button(
-            "Sort & Filter", id="series sort button", 
-            on_press=self.app.open_ranking_sort, 
-            style=Pack(flex=0.08, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        series_sort_box = toga.Box(children=[sort_button], style=Pack(direction=COLUMN))
+            chld = [
+                label, self.get_div(), 
+                sort_box, self.get_div(), 
+                range_box, self.get_div(),
+                self.widgets_dict[f"{t} container"]
+            ]
+            box = toga.Box(children=chld, style=Pack(direction=COLUMN, background_color=self.clrs[0]))
+            boxes.append(box)
 
-        back_button = toga.Button(
-            "<", id="series back button",
-            on_press=self.change_range, 
-            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        next_button = toga.Button(
-            ">", id="series next button",
-            on_press=self.change_range, 
-            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        self.series_range = toga.Selection(
-            id="series range", 
-            on_change=self.load_rankings,
-            style=Pack(flex=0.6, padding=4, height=44))
-        self.widgets_dict["series range"] = self.series_range
-        series_range_box = toga.Box(
-            children=[back_button, self.series_range, next_button],
-            style=Pack(direction=ROW))
-        
-        series_ranking_box = toga.Box(id="series ranking box", style=Pack(direction=COLUMN))
-        self.widgets_dict["series ranking box"] = series_ranking_box
-        series_ranking_container = toga.ScrollContainer(content=series_ranking_box, horizontal=False, style=Pack(flex=0.75))
-        self.widgets_dict["series ranking container"] = series_ranking_container
+            self.reg(chld + back_next_buttons + [sort_button, box, self.widgets_dict[f"{t} no_entries label"]])
 
-        series_box = toga.Box(
-            children=[
-                series_label, toga.Divider(style=Pack(background_color="#27221F")), 
-                series_sort_box, toga.Divider(style=Pack(background_color="#27221F")), 
-                series_range_box, toga.Divider(style=Pack(background_color="#27221F")),
-                series_ranking_container
-            ],
-            style=Pack(direction=COLUMN, background_color="#393432"))
-        
-        # music ranking
-        music_label = toga.Label(
-            "Music Ranking", 
-            style=Pack(flex=0.09, padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
-        
-        sort_button = toga.Button(
-            "Sort & Filter", id="music sort button", 
-            on_press=self.app.open_ranking_sort, 
-            style=Pack(flex=0.08, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        music_sort_box = toga.Box(children=[sort_button], style=Pack(direction=COLUMN))
-
-        back_button = toga.Button(
-            "<", id="music back button",
-            on_press=self.change_range, 
-            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        next_button = toga.Button(
-            ">", id="music next button",
-            on_press=self.change_range, 
-            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F")
-        )
-        self.music_range = toga.Selection(
-            id="music range", 
-            on_change=self.load_rankings,
-            style=Pack(flex=0.6, padding=4, height=44))
-        self.widgets_dict["music range"] = self.music_range
-        music_range_box = toga.Box(
-            children=[back_button, self.music_range, next_button],
-            style=Pack(direction=ROW))
-        
-        music_ranking_box = toga.Box(id="music ranking box", style=Pack(direction=COLUMN))
-        self.widgets_dict["music ranking box"] = music_ranking_box
-        music_ranking_container = toga.ScrollContainer(content=music_ranking_box, horizontal=False, style=Pack(flex=0.75))
-        self.widgets_dict["music ranking container"] = music_ranking_container
-
-        music_box = toga.Box(
-            children=[
-                music_label, toga.Divider(style=Pack(background_color="#27221F")), 
-                music_sort_box, toga.Divider(style=Pack(background_color="#27221F")), 
-                music_range_box, toga.Divider(style=Pack(background_color="#27221F")),
-                music_ranking_container
-            ],
-            style=Pack(direction=COLUMN, background_color="#393432"))
-        
         # return container
-        book_icon = toga.Icon("resources/ranking/book.png")
-        movie_icon = toga.Icon("resources/ranking/movie.png")
-        series_icon = toga.Icon("resources/ranking/series.png")
-        music_icon = toga.Icon("resources/ranking/music.png")
+        icons = [toga.Icon(f"resources/images/ranking/{t}.png") for t in self.data["categories"]]
 
-        list_box = toga.OptionContainer(content=[
-            toga.OptionItem("Book", book_box, icon=book_icon), 
-            toga.OptionItem("Movie", movie_box, icon=movie_icon), 
-            toga.OptionItem("Series", series_box, icon=series_icon), 
-            toga.OptionItem("Music", music_box, icon=music_icon)])
+        list_container = toga.OptionContainer(content=[toga.OptionItem(self.strings["categories"][i], boxes[i], icon=icons[i]) for i in range(4)])
 
-        return list_box
+        return list_container
         
     
-    def get_add_entry_box(self):
-        # add box label
-        label = toga.Label(
-            "Add a New Entry", 
-            style=Pack(padding=14, text_align="center", font_weight="bold", font_size=18, color="#EBF6F7"))
+    def get_add_edit_entry_box(self):
+        # box label
+        add_label = toga.Label(
+            self.strings["add_entry_label"], 
+            style=Pack(padding=14, text_align="center", font_weight="bold", font_size=18, color=self.clrs[2])
+        )
+        edit_label = toga.Label(
+            self.strings["edit_entry_label"], 
+            style=Pack(padding=14, text_align="center", font_weight="bold", font_size=18, color=self.clrs[2])
+        )
         
-        # type box
-        type_label = toga.Label(
-            "Type:", 
-            style=Pack(padding=(10,18), font_size=16, color="#EBF6F7"))
-        self.add_type = toga.Selection(
-            items=[t.capitalize() for t in self.ranking_types],
-            id="add type",
+        # category box
+        category_label = toga.Label(
+            f"{self.strings['category']}:", 
+            style=Pack(padding=(10,18), font_size=14, color=self.clrs[2])
+        )
+        self.widgets_dict["category selection"] = toga.Selection(
+            items=[t for t in self.strings["categories"]],
+            id=f"category selection",
             on_change=self.type_change,
-            style=Pack(padding=(3,18,0), height=44, flex=0.8))
-        type_box = toga.Box(
-            children=[type_label, self.add_type],
-            style=Pack(direction=ROW))
-        
+            style=Pack(padding=(3,18,0), height=44, flex=0.66)
+        )
+        self.widgets_dict["category box"] = toga.Box(
+            children=[category_label, self.widgets_dict["category selection"]],
+            style=Pack(direction=ROW)
+        )
+
         # entry box
         ## title
-        title_label = toga.Label(
-            "Title:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["add title label"] = title_label
-        self.add_title = toga.TextInput(style=Pack(padding=(0,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["add title"] = self.add_title
+        title_label = self.get_label(f"{self.strings['title']}:")
+        self.widgets_dict["add_edit title input"] = toga.TextInput(
+            style=Pack(padding=(0,18), height=44, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+        )
 
-        self.add_switch = toga.Switch(
-            text="Autoformat",
-            id="add switch",
+        self.widgets_dict["add_edit title_person switch"] = toga.Switch(
+            text=self.strings["autoformat"],
+            id="title_person switch",
             value=True, 
-            style=Pack(padding=(8,18,18), font_size=12, color="#EBF6F7"))
-        self.widgets_dict["add switch"] = self.add_switch
+            style=Pack(padding=(8,18,18), font_size=12, color=self.clrs[2])
+        )
         
-        ## author/director/creator/artist (person)
-        author_label = toga.Label(
-            "Author:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["add book_person label"] = author_label
-        director_label = toga.Label(
-            "Director:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["add movie_person label"] = director_label
-        creator_label = toga.Label(
-            "Creator:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["add series_person label"] = creator_label
-        artist_label = toga.Label(
-            "Artist:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["add music_person label"] = artist_label
+        ## author/director/creator (person)
+        for c in self.data["categories"]:
+            self.widgets_dict[f"{c}_person label"] = self.get_label(f"{self.strings[self.maps['category_to_person'][c]]}:")
+            self.reg([self.widgets_dict[f"{c}_person label"]])
         
-        self.add_person = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["add person"] = self.add_person
+        self.widgets_dict["person input"] = toga.TextInput(
+            style=Pack(padding=(0,18,18), height=44, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+        )
 
         ## years
-        start_year_label = toga.Label(
-            "Start Year:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.add_start_year = toga.NumberInput(
-            id="add start_year input",
+        def start_year_change(widget):
+            self.widgets_dict["add_edit end_year input"].min = widget.value  
+
+        self.widgets_dict["start_year label"] = self.get_label(f"{self.strings['start_year']}:")
+        self.widgets_dict["add_edit start_year input"] = toga.NumberInput(
+            id="add_edit start_year input",
             step=1, 
-            min=-2601, max=date.today().year,
-            on_change=self.start_year_change, 
-            style=Pack(padding=(0,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["add start_year"] = self.add_start_year
+            min=-2601, max=self.today.year,
+            on_change=start_year_change, 
+            style=Pack(padding=(0,18), height=44, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+        )
         
-        end_year_label = toga.Label(
-            "End Year:", 
-            style=Pack(padding=(10,18,0), font_size=14, color="#EBF6F7"))
-        self.add_end_year = toga.NumberInput(
-            step=1, max=date.today().year,
-            style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["add end_year"] = self.add_end_year
-        
-        self.widgets_dict["add year box"] = toga.Box(
-            children=[start_year_label, self.add_start_year, end_year_label, self.add_end_year],
-            style=Pack(direction=COLUMN))
+        end_year_label = self.get_label(f"{self.strings['end_year']}:", (10,18,0))
+        self.widgets_dict["add_edit end_year input"] = toga.NumberInput(
+            step=1, max=self.today.year,
+            style=Pack(padding=(0,18,18), height=44, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+        )
         
         ## tags
-        tags_label = toga.Label(
-            "Tags:", 
-            style=Pack(padding=(18,0,0,18), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["add tags label"] = tags_label
-        self.add_tags = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["add tags"] = self.add_tags
+        self.widgets_dict["tags label"] = self.get_label(f"{self.strings['tags']}:")
+        self.widgets_dict["add_edit tags input"] = toga.TextInput(
+            style=Pack(padding=(0,18,18), height=44, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+        )
         
         ## note
-        note_label = toga.Label(
-            "Note:",
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["add note label"] = note_label
-        self.add_note = toga.MultilineTextInput(
-            placeholder="", 
-            style=Pack(padding=(0,18,18), height=200, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["add note"] = self.add_note
+        note_label = self.get_label(f"{self.strings['note']}:")
+        
+        self.widgets_dict["add_edit note input"] = toga.MultilineTextInput(
+            placeholder=self.strings["note_input_placeholder"], 
+            style=Pack(padding=(0,18,18), height=200, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+        )
 
         ## grade
-        grade_label = toga.Label(
-            "Grade:", 
-            style=Pack(padding=(18,0,0,18), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["add grade label"] = grade_label
-        self.add_grade = toga.Selection(
-            items=[self.int_to_grade[i] for i in range(len(self.int_to_grade), 0, -1)],
-            style=Pack(padding=(0,18), height=44))
-        self.widgets_dict["add grade"] = self.add_grade
+        self.widgets_dict["grade label"] = self.get_label(f"{self.strings['grade']}:")
         
-        self.add_top_box = toga.Box(style=Pack(direction=COLUMN, flex=0.8))
-        self.add_entry_container = toga.ScrollContainer(content=self.add_top_box, horizontal=False, style=Pack(flex=0.7))
-        self.widgets_dict["add top_box"] = self.add_top_box
+        self.widgets_dict["add_edit grade selection"] = toga.Selection(
+            items=[self.maps["num_to_name"][i] for i in range(len(self.maps["num_to_name"]), 0, -1)],
+            style=Pack(padding=(0,18), height=44)
+        )
         
-        # button box
+        self.widgets_dict["add_edit top_box"] = toga.Box(style=Pack(direction=COLUMN, flex=0.8))
+        self.widgets_dict["add_edit top_container"] = toga.ScrollContainer(
+            content=self.widgets_dict["add_edit top_box"], 
+            horizontal=False, 
+            style=Pack(flex=0.7)
+        )
+        
         button = toga.Button(
-            "Add", on_press=self.add_entry, 
-            style=Pack(height=120, padding=11, font_size=24, color="#EBF6F7", background_color="#27221F"))
-        bottom_box = toga.Box(children=[button], style=Pack(direction=COLUMN))
+            self.strings_c["add"], on_press=self.add_save_entry, 
+            style=Pack(height=120, padding=11, font_size=18, color=self.clrs[2], background_color=self.clrs[1])
+        )
+        add_bottom_box = toga.Box(children=[button], style=Pack(direction=COLUMN))
 
-        # return box
-        add_box = toga.Box(
-            children=[
-                label, toga.Divider(style=Pack(background_color="#27221F")),
-                type_box, toga.Divider(style=Pack(background_color="#27221F")),
-                self.add_entry_container, toga.Divider(style=Pack(background_color="#27221F")),
-                bottom_box
-            ], 
-            style=Pack(direction=COLUMN, background_color="#393432"))
-        
-        return add_box
-
-
-    def get_edit_entry_box(self):
-        # edit box label
-        label = toga.Label(
-            "Read/Edit the Entry", 
-            style=Pack(padding=14, text_align="center", font_weight="bold", font_size=18, color="#EBF6F7"))
-        
-        # type box
-        type_label = toga.Label(
-            "Type:", 
-            style=Pack(padding=(10,18), font_size=16, color="#EBF6F7"))
-        self.edit_type = toga.Selection(
-            items=[t.capitalize() for t in self.ranking_types],
-            id="edit type",
-            on_change=self.type_change,
-            enabled=False,
-            style=Pack(padding=(3,18), height=44, flex=0.8))
-        type_box = toga.Box(
-            children=[type_label, self.edit_type],
-            style=Pack(direction=ROW))
-        
-        # entry box
-        ## title
-        title_label = toga.Label(
-            "Title:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["edit title label"] = title_label
-        self.edit_title = toga.TextInput(style=Pack(padding=(0,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["edit title"] = self.edit_title
-
-        self.edit_switch = toga.Switch(
-            text="Autoformat",
-            id="edit switch",
-            value=True, 
-            style=Pack(padding=(8,18,18), font_size=12, color="#EBF6F7"))
-        self.widgets_dict["edit switch"] = self.edit_switch
-        
-        ## author/director/creator/artist (person)
-        author_label = toga.Label(
-            "Author:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["edit book_person label"] = author_label
-        director_label = toga.Label(
-            "Director:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["edit movie_person label"] = director_label
-        creator_label = toga.Label(
-            "Creator:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["edit series_person label"] = creator_label
-        artist_label = toga.Label(
-            "Artist:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["edit music_person label"] = artist_label
-        
-        self.edit_person = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["edit person"] = self.edit_person
-
-        ## years
-        start_year_label = toga.Label(
-            "Start Year:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.edit_start_year = toga.NumberInput(
-            id="edit start_year input",
-            step=1, 
-            min=-2601, max=date.today().year,
-            on_change=self.start_year_change, 
-            style=Pack(padding=(0,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["edit start_year"] = self.edit_start_year
-        
-        end_year_label = toga.Label(
-            "End Year:", 
-            style=Pack(padding=(10,18,0), font_size=14, color="#EBF6F7"))
-        self.edit_end_year = toga.NumberInput(
-            step=1, max=date.today().year,
-            style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["edit end_year"] = self.edit_end_year
-        
-        self.widgets_dict["edit year box"] = toga.Box(
-            children=[start_year_label, self.edit_start_year, end_year_label, self.edit_end_year],
-            style=Pack(direction=COLUMN))
-        
-        ## tags
-        tags_label = toga.Label(
-            "Tags:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["edit tags label"] = tags_label
-        self.edit_tags = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["edit tags"] = self.edit_tags
-        
-        ## note
-        note_label = toga.Label(
-            "Note:",
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["edit note label"] = note_label
-        self.edit_note = toga.MultilineTextInput(
-            placeholder="", 
-            style=Pack(padding=(0,18,18), height=200, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["edit note"] = self.edit_note
-
-        ## grade
-        grade_label = toga.Label(
-            "Grade:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["edit grade label"] = grade_label
-        self.edit_grade = toga.Selection(
-            items=[self.int_to_grade[i] for i in range(len(self.int_to_grade), 0, -1)],
-            style=Pack(padding=(0,18), height=44, flex=0.8))
-        self.widgets_dict["edit grade"] = self.edit_grade
-        
-        self.edit_top_box = toga.Box(style=Pack(direction=COLUMN, flex=0.8))
-        self.edit_entry_container = toga.ScrollContainer(content=self.edit_top_box, horizontal=False, style=Pack(flex=0.7))
-        self.widgets_dict["edit top_box"] = self.edit_top_box
-        
-        # button box
         remove_button = toga.Button(
-                "Remove", on_press=self.remove_entry_dialog, 
-                style=Pack(flex=0.5, height=120, padding=(11,4,11,11), font_size=24, color="#EBF6F7", background_color="#27221F"))
+            self.strings_c["remove"], on_press=self.remove_entry_dialog, 
+            style=Pack(flex=0.5, height=120, padding=(11,4,11,11), font_size=18, color=self.clrs[2], background_color=self.clrs[1])
+        )
         save_button = toga.Button(
-                "Save", on_press=self.save_entry_dialog, 
-                style=Pack(flex=0.5, height=120, padding=(11,11,11,4), font_size=24, color="#EBF6F7", background_color="#27221F"))
-        bottom_box = toga.Box(children=[remove_button, save_button], style=Pack(direction=ROW))
+            self.strings_c["save"], on_press=self.save_entry_dialog, 
+            style=Pack(flex=0.5, height=120, padding=(11,11,11,4), font_size=18, color=self.clrs[2], background_color=self.clrs[1])
+        )
+        bottom_chld = [remove_button, save_button]
+        edit_bottom_box = toga.Box(children=bottom_chld, style=Pack(direction=ROW))
 
         # return box
-        edit_box = toga.Box(
-            children=[
-                label, toga.Divider(style=Pack(background_color="#27221F")),
-                type_box, toga.Divider(style=Pack(background_color="#27221F")),
-                self.edit_entry_container, toga.Divider(style=Pack(background_color="#27221F")),
-                bottom_box
-            ], 
-            style=Pack(direction=COLUMN, background_color="#393432"))
+        self.widgets_dict["full_divs"] = full_divs = [self.get_div() for _ in range(4)]
+        add_chld = [
+            add_label, full_divs[0],
+            self.widgets_dict["category box"], full_divs[1],
+            self.widgets_dict["add_edit top_container"], full_divs[2],
+            add_bottom_box
+        ]
+        edit_chld = [edit_label] + add_chld[1:-1] + [edit_bottom_box]
+        self.widgets_load_lists["add box"] = add_chld
+        self.widgets_load_lists["edit box"] = edit_chld
+
+        self.widgets_load_lists["add_edit top_boxes"] = {}
+        for t in self.data["categories"]:
+            l = []
+            if t != "music":
+                l.extend([title_label, self.widgets_dict["add_edit title input"], self.widgets_dict["add_edit title_person switch"], "partial div"])
+            l.extend([self.widgets_dict[f"{t}_person label"], self.widgets_dict["person input"]])
+            if t == "music":
+                l.append(self.widgets_dict["add_edit title_person switch"])
+            l.append("partial div")
+            if t != "music":
+                l.extend([
+                    self.widgets_dict["start_year label"], self.widgets_dict["add_edit start_year input"], 
+                    end_year_label, self.widgets_dict["add_edit end_year input"], "partial div"
+                ])
+            l.extend([
+                self.widgets_dict["tags label"], self.widgets_dict["add_edit tags input"], "partial div",
+                note_label, self.widgets_dict["add_edit note input"], "partial div",
+                self.widgets_dict["grade label"], self.widgets_dict["add_edit grade selection"]
+            ])
+
+            self.widgets_load_lists["add_edit top_boxes"][t] = l
+
+            self.reg(l)
         
-        return edit_box
+        self.widgets_dict["add_edit box"] = box = toga.Box(style=Pack(direction=COLUMN, background_color=self.clrs[0]))
+
+        self.reg(add_chld + edit_chld + bottom_chld + [
+            self.widgets_dict["start_year label"], self.widgets_dict["add_edit start_year input"],
+            end_year_label, self.widgets_dict["add_edit end_year input"], 
+            button, category_label, box
+        ])
+
+        return box
     
 
     def get_sort_box(self):
-        self.criteria = {
-            "book": ["—", "Grade", "Title", "Author", "Year", "Added Date"], 
-            "movie": ["—", "Grade", "Title", "Director", "Year", "Added Date"], 
-            "series": ["—", "Grade", "Title", "Creator", "Year", "Added Date"],
-            "music": ["—", "Grade", "Artist", "Added Date"]}
-        self.data["sorting"] = {t:[("—", "Asc") for _ in range(3)] for t in self.ranking_types}
+        self.data["sorting"] = {t: [("—", "↑") for _ in range(3)] for t in self.data["categories"]}
+
         self.data["filtering"] = {
-            t:{"grade": ("E", "S"), "person": "", "tags_include": "", "tags_exclude": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), date.today())}
-            for t in self.ranking_types if t != "music" and t != "book"}
-        self.data["filtering"]["book"] = {"grade": ("E", "S"), "person": "", "tags_include": "", "tags_exclude": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), date.today())}
-        self.data["filtering"]["music"] = {"grade": ("E", "S"), "tags_include": "", "tags_exclude": "", "added_date": [date(year=2024, month=7, day=25), date.today()]}
-        self.data["load sorting"] = {t:[] for t in self.ranking_types}
-        self.data["load filtering"] = {t:[] for t in self.ranking_types}
+            t: {"grade": ("E", "S"), "person": "", "tags_include": "", "tags_exclude": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), self.today)}
+            for t in self.data["categories"]
+        }
+        del self.data["filtering"]["music"]["person"]
+        del self.data["filtering"]["music"]["start_year"]
+
+        self.data["load sorting"] = {t: [] for t in self.data["categories"]}
+        self.data["load filtering"] = {t: [] for t in self.data["categories"]}
         
-        # type box
-        type_label = toga.Label(
-            "Type:", 
-            style=Pack(padding=(10,18), font_size=16, color="#EBF6F7"))
-        self.sort_type = toga.Selection(
-            items=[t.capitalize() for t in self.ranking_types],
-            id="sort type",
-            on_change=self.type_change,
-            enabled=False,
-            style=Pack(padding=(3,18), height=44, flex=0.8))
-        self.widgets_dict["sort type"] = self.sort_type
-        type_box = toga.Box(
-            children=[type_label, self.sort_type],
-            style=Pack(direction=ROW))
+        # category box
+        category_box = self.widgets_dict["category box"]
         
         # sort
         ## label
         sort_label = toga.Label(
-            "Sort", 
-            style=Pack(padding=14, text_align="center", font_weight="bold", font_size=18, color="#EBF6F7"))
+            self.strings["sort"], 
+            style=Pack(padding=14, text_align="center", font_weight="bold", font_size=18, color=self.clrs[2])
+        )
         
         ## number+criterion+order boxes
         labels = [
-            toga.Label(f"{i}.", style=Pack(padding=18, font_size=14, color="#EBF6F7")) 
-            for i in range(1,4)]
-        self.sort_criteria = [
+            toga.Label(f"{i}.", style=Pack(padding=18, font_size=14, color=self.clrs[2])) 
+            for i in range(1,4)
+        ]
+        self.widgets_dict["sort criterion selections"] = [
             toga.Selection(
-                id=f"sort criterion {i}",
+                id=f"sort criterion selection {i}",
                 on_change=self.criterion_change,
-                style=Pack(flex=0.55, padding=(8,18), height=44))
-            for i in range(1,4)]
-        self.sort_orders = [
-            toga.Selection(items=["Asc", "Desc"], id=f"sort order {i}", style=Pack(flex=0.45, padding=(8,18), height=44))
-            for i in range(1,4)]
+                style=Pack(flex=0.8, padding=(8,18,8,2), height=44)
+            )
+            for i in range(1,4)
+        ]
+        self.widgets_dict["sort order selections"] = [
+            toga.Selection(items=["↑", "↓"], id=f"sort order selection {i}", style=Pack(flex=0.15, padding=(8,18,8,8), height=44))
+            for i in range(1,4)
+        ]
         
-        sort_boxes = [
-            toga.Box(
-            children=[labels[i], self.sort_criteria[i], self.sort_orders[i]],
-            style=Pack(direction=ROW))
-            for i in range(3)]
-        
+        sort_boxes = []
+        for i in range(3):
+            chld = [labels[i], self.widgets_dict["sort criterion selections"][i], self.widgets_dict["sort order selections"][i]]
+            sort_boxes.append(toga.Box(children=chld,style=Pack(direction=ROW)))
+
+            self.reg([labels[i]])
+
         ## reset button
         sort_reset_button = toga.Button(
-            "Reset", on_press=self.reset_sort, 
-            style=Pack(padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F"))
+            self.strings_c["reset"], on_press=self.reset_sort, 
+            style=Pack(padding=4, height=44, font_size=13, color=self.clrs[2], background_color=self.clrs[1])
+        )
         
         ## sort box
-        sort_box = toga.Box(
-            children=[
-                sort_label, toga.Divider(style=Pack(background_color="#27221F")), 
-                sort_boxes[0], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                sort_boxes[1], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")), 
-                sort_boxes[2], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                sort_reset_button],
-            style=Pack(direction=COLUMN))
+        sort_chld = [
+            sort_label, self.get_div(), 
+            sort_boxes[0], self.get_div((0,80)),
+            sort_boxes[1], self.get_div((0,80)), 
+            sort_boxes[2], self.get_div((0,80)),
+            sort_reset_button, self.get_div()
+        ]
+        sort_box = toga.Box(children=sort_chld, style=Pack(direction=COLUMN))
         
         # filter box
         ## label
         filter_label = toga.Label(
-            "Filter", 
-            style=Pack(padding=14, text_align="center", font_weight="bold", font_size=18, color="#EBF6F7"))
+            self.strings["filter"], 
+            style=Pack(padding=14, text_align="center", font_weight="bold", font_size=18, color=self.clrs[2])
+        )
         
         ## grade
-        grade_label = toga.Label(
-            "Grade:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["sort grade label"] = grade_label
-        self.sort_grades = [toga.Selection(style=Pack(flex=0.5, padding=(0,18,18), height=44)) for _ in range(2)]
-        self.sort_grades[0].items = [self.int_to_grade[i] for i in range(1, len(self.int_to_grade)+1)]
-        self.sort_grades[1].items = [self.int_to_grade[i] for i in range(len(self.int_to_grade), 0, -1)]
-        grade_box = toga.Box(children=self.sort_grades, style=Pack(direction=ROW))
-        self.widgets_dict["sort grade"] = self.sort_grades
+        grade_label = self.widgets_dict["grade label"]
+        
+        items = [self.maps["num_to_name"][i] for i in range(1, len(self.maps["num_to_name"]) + 1)]
+        self.widgets_dict["sort grade selections"] = [toga.Selection(items=items,style=Pack(flex=0.5, padding=(0,18,18), height=44)) for _ in range(2)]
+
+        grade_box = toga.Box(children=self.widgets_dict["sort grade selections"], style=Pack(direction=ROW))
+
+        def adjust_grade(widget):
+            w = self.widgets_dict["sort grade selections"][1]
+            val = w.value
+
+            idx = self.data["grades"].index(widget.value)
+            items = self.data["grades"][idx:]
+            w.items = items
+            if w.value != val and val in items:
+                w.value = val
+            
+        self.widgets_dict["sort grade selections"][0].on_change = adjust_grade
 
         ## author/director/creator/artist (person)
-        author_label = toga.Label(
-            "Author:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["sort book_person label"] = author_label
-        director_label = toga.Label(
-            "Director:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["sort movie_person label"] = director_label
-        creator_label = toga.Label(
-            "Creator:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["sort series_person label"] = creator_label
-        artist_label = toga.Label(
-            "Artist:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["sort music_person label"] = artist_label
-        
-        self.sort_person = toga.TextInput(style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["sort person"] = self.sort_person
+        person_input = self.widgets_dict["person input"]
 
         ## tags
-        tags_label = toga.Label(
-            "Tags:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["sort tags label"] = tags_label
+        tags_label = self.widgets_dict["tags label"]
         
-        self.sort_tags_include = toga.TextInput(
-            placeholder="include",
-            style=Pack(padding=(0,18,0), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["sort tags_include"] = self.sort_tags_include
+        self.widgets_dict["sort tags_include input"] = toga.TextInput(
+            placeholder=self.strings["include_tags_placeholder"],
+            style=Pack(padding=(0,18,0), height=44, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+        )
 
-        self.sort_tags_exclude = toga.TextInput(
-            placeholder="exclude",
-            style=Pack(padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["sort tags_exclude"] = self.sort_tags_exclude
+        self.widgets_dict["sort tags_exclude input"] = toga.TextInput(
+            placeholder=self.strings["exclude_tags_placeholder"],
+            style=Pack(padding=(0,18,18), height=44, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+        )
 
         ## start year between
-        start_year_label = toga.Label(
-            "Start Year:", 
-            style=Pack(padding=(18,0,0,18), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["sort start_year label"] = start_year_label
-        self.sort_start_years = [
+        start_year_label = self.widgets_dict["start_year label"]
+        self.widgets_dict["sort start_year inputs"] = [
             toga.NumberInput(
                 step=1, 
-                min=-2601, max=date.today().year,
-                style=Pack(flex=0.5, padding=(0,18,18), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+                min=-2601, max=self.today.year,
+                style=Pack(flex=0.5, padding=(0,18,18), height=44, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+            )
             for _ in range(2)]
-        self.widgets_dict["sort start_year"] = self.sort_start_years
-        start_year_box = toga.Box(children=self.sort_start_years, style=Pack(direction=ROW))
-        self.widgets_dict["sort start_year box"] = start_year_box
+        
+        def adjust_year(widget):
+            self.widgets_dict["sort start_year inputs"][1].min = widget.value
+
+        self.widgets_dict["sort start_year inputs"][0].on_change = adjust_year
+
+        start_year_box = toga.Box(children=self.widgets_dict["sort start_year inputs"], style=Pack(direction=ROW))
         
         ## added date between
-        added_date_label = toga.Label(
-            "Added Date:", 
-            style=Pack(padding=(18,18,0), font_size=14, color="#EBF6F7"))
-        self.widgets_dict["sort added_date label"] = added_date_label
-        self.sort_added_dates = [
-            toga.DateInput(max=date.today(), style=Pack(flex=0.5, padding=(0,18,18), width=160, color="#EBF6F7"))
-            for _ in range(2)]
+        added_date_label = self.get_label(f"{self.strings['added_date']}:")
+
+        self.widgets_dict["sort added_date dates"] = [
+            toga.DateInput(max=self.today, style=Pack(flex=0.5, padding=(0,18,18), width=160, color=self.clrs[2]))
+            for _ in range(2)
+        ]
         added_date_boxes = [
-            toga.Box(children=[self.sort_added_dates[i],], style=Pack(direction=COLUMN, flex=0.5))
+            toga.Box(children=[self.widgets_dict["sort added_date dates"][i]], style=Pack(direction=COLUMN, flex=0.5))
             for i in range(2)
         ]
-        self.widgets_dict["sort added_date"] = self.sort_added_dates
-        added_date_box = toga.Box(children=added_date_boxes, style=Pack(direction=ROW))
-        self.widgets_dict["sort added_date box"] = added_date_box
+
+        def adjust_date(widget):
+            w = self.widgets_dict["sort added_date dates"][1]
+            if widget.value > w.value:
+                w.value = widget.value
+
+        self.widgets_dict["sort added_date dates"][0].on_change = adjust_date
+
+        added_date_box  = toga.Box(children=added_date_boxes, style=Pack(direction=ROW))
 
         ## filter reset button
-        filter_reset_button = toga.Button(
-            "Reset", on_press=self.reset_filter, 
-            style=Pack(padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F"))
-        self.widgets_dict["sort filter_reset button"] = filter_reset_button
+        reset_button = toga.Button(
+            self.strings_c["reset"], on_press=self.reset_filter, 
+            style=Pack(padding=4, height=44, font_size=13, color=self.clrs[2], background_color=self.clrs[1])
+        )
 
         ## filter box
-        self.filter_box = toga.Box(style=Pack(direction=COLUMN))
+        self.widgets_dict["filter box"] = toga.Box(style=Pack(direction=COLUMN))
 
         ## filter load lists
-        dividers = [toga.Divider(style=Pack(background_color="#27221F")) for _ in range(6)]
-        self.filters = {}
-        for t in self.ranking_types:
+        self.widgets_load_lists["filter box"] = {}
+        for t in self.data["categories"]:
+            l = [
+                filter_label, self.widgets_dict["full_divs"][0], 
+                grade_label, grade_box, "partial div",
+            ]
             if t != "music":
-                self.filters[t] = [
-                    filter_label, dividers[0],
-                    grade_label, grade_box, dividers[1],
-                    self.widgets_dict[f"sort {t}_person label"], self.sort_person, dividers[2]]
-                self.filters[t] += [
-                    tags_label, self.sort_tags_include, self.sort_tags_exclude, dividers[3],
-                    start_year_label, start_year_box, dividers[4],
-                    added_date_label, added_date_box, dividers[5], 
-                    filter_reset_button
-                ]
-            else:
-                self.filters[t] = [
-                    filter_label, dividers[0],
-                    grade_label, grade_box, dividers[1],
-                    tags_label, self.sort_tags_include, self.sort_tags_exclude, dividers[2],
-                    added_date_label, added_date_box, dividers[3], 
-                    filter_reset_button
-                ]
-        
+                l.extend([self.widgets_dict[f"{t}_person label"], person_input, "partial div"])
+            l.extend([tags_label, self.widgets_dict["sort tags_include input"], self.widgets_dict["sort tags_exclude input"], "partial div"])
+            if t != "music":
+                l.extend([start_year_label, start_year_box, "partial div"])
+            l.extend([added_date_label, added_date_box, "partial div", reset_button])
+
+            self.widgets_load_lists["filter box"][t] = l
+
+            self.reg(l)
+
         # sort & filter button
         button = toga.Button(
-            "Sort & Filter", id="sort button", 
+            self.strings_c["apply"], id="sort button", 
             on_press=self.check_sort_inputs, 
-            style=Pack(height=120, padding=11, font_size=24, color="#EBF6F7", background_color="#27221F"))
+            style=Pack(height=120, padding=11, font_size=18, color=self.clrs[2], background_color=self.clrs[1])
+        )
         
         # return box
         sort_filter_box = toga.Box(
             children=[
-                sort_box, toga.Divider(style=Pack(background_color="#27221F")),
-                self.filter_box
+                sort_box, self.widgets_dict["full_divs"][1],
+                self.widgets_dict["filter box"]
             ],
-            style=Pack(direction=COLUMN))
-        self.sort_filter_container = toga.ScrollContainer(content=sort_filter_box, horizontal=False, style=Pack(flex=0.8))
+            style=Pack(direction=COLUMN)
+        )
+        self.widgets_dict["sort container"] = toga.ScrollContainer(content=sort_filter_box, horizontal=False, style=Pack(flex=0.8))
 
-        box = toga.Box(
-            children=[
-                type_box, toga.Divider(style=Pack(background_color="#27221F")),
-                self.sort_filter_container, toga.Divider(style=Pack(background_color="#27221F")),
-                button
-            ], 
-            style=Pack(direction=COLUMN, background_color="#393432"))
+        chld = [
+            category_box, self.widgets_dict["full_divs"][2],
+            self.widgets_dict["sort container"], self.widgets_dict["full_divs"][3],
+            button
+        ]
+        self.widgets_load_lists["sort box"] = chld
+        self.widgets_dict["sort box"] = toga.Box(
+            children=chld, 
+            style=Pack(direction=COLUMN, background_color=self.clrs[0])
+        )
         
-        return box
+        self.reg(
+            sort_chld + self.widgets_dict["sort start_year inputs"] + self.widgets_dict["sort added_date dates"] + 
+            [sort_label, added_date_label, button, self.widgets_dict["sort box"]]
+        )
+
+        return self.widgets_dict["sort box"]
 
 
     def get_search_box(self):
         # label
         label = toga.Label(
-            "Search Entry", 
-            style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=20, color="#EBF6F7"))
+            self.strings["search_label"], 
+            style=Pack(padding=(14,20), text_align="center", font_weight="bold", font_size=18, color=self.clrs[2])
+        )
         
         # type
-        type_label = toga.Label(
-            "Type:", 
-            style=Pack(padding=(10,18), font_size=16, color="#EBF6F7"))
-        self.search_type = toga.Selection(
-            items=[t.capitalize() for t in self.ranking_types],
-            id="search type",
-            on_change=self.type_change,
-            style=Pack(padding=(3,18), height=44, flex=0.8))
-        type_box = toga.Box(
-            children=[type_label, self.search_type],
-            style=Pack(direction=ROW))
+        self.widgets_dict["search category box"] = toga.Box(children=[self.widgets_dict["category box"]], style=Pack(direction=COLUMN))
 
         # search
-        self.search_input = toga.TextInput(style=Pack(padding=(4,4,0), height=44, font_size=12, color="#EBF6F7", background_color="#27221F"))
+        self.widgets_dict["search input"] = toga.TextInput(
+            style=Pack(padding=(4,4,0), height=44, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+        )
         search_button = toga.Button(
-            "Search", id="search button",
+            self.strings["search"], id="search button",
             on_press=self.load_rankings, 
-            style=Pack(padding=4, height=44, font_size=13, color="#EBF6F7", background_color="#27221F"))
-        search_box = toga.Box(
-            children=[self.search_input, search_button],
-            style=Pack(direction=COLUMN))
+            style=Pack(padding=4, height=44, font_size=13, color=self.clrs[2], background_color=self.clrs[1])
+        )
+        search_chld = [self.widgets_dict["search input"], search_button]
+        search_box = toga.Box(children=search_chld, style=Pack(direction=COLUMN))
+        
+        self.widgets_dict["search no_entries label"] = toga.Label(
+            self.strings["no_entries_found"],
+            style=Pack(padding=10, font_size=12, color=self.clrs[2])
+        )
         
         # result box
-        self.search_result_box = toga.Box(style=Pack(direction=COLUMN))
-        result_container = toga.ScrollContainer(content=self.search_result_box, horizontal=False, style=Pack(flex=0.75))
+        self.widgets_dict["search result box"] = toga.Box(style=Pack(direction=COLUMN))
+        result_container = toga.ScrollContainer(content=self.widgets_dict["search result box"], horizontal=False, style=Pack(flex=0.75))
 
         # return box
+        chld = [
+            label, self.get_div(),
+            self.widgets_dict["search category box"], self.get_div(),
+            search_box, self.get_div(),
+            result_container
+        ]
         box = toga.Box(
-            children=[
-                label, toga.Divider(style=Pack(background_color="#27221F")),
-                type_box, toga.Divider(style=Pack(background_color="#27221F")),
-                search_box, toga.Divider(style=Pack(background_color="#27221F")),
-                result_container
-            ], 
-            style=Pack(direction=COLUMN, background_color="#393432"))
+            children=chld, 
+            style=Pack(direction=COLUMN, background_color=self.clrs[0])
+        )
         
+        self.reg(chld + search_chld + [box])
+
         return box
     
 
     def setup_rankings(self):
-        ranking_list_box = self.get_list_box()
-        ranking_sort_box = self.get_sort_box()
-        add_entry_box = self.get_add_entry_box()
-        search_entry_box = self.get_search_box()
-        edit_entry_box = self.get_edit_entry_box()
+        list_box = self.get_list_box()
+        add_edit_box = self.get_add_edit_entry_box()
+        sort_box = self.get_sort_box()
+        search_box = self.get_search_box()
 
-        con, cur = get_connection(self.db_path)
-        cur.executescript("""
+        self.setup_db_script = """
             CREATE TABLE IF NOT EXISTS book_entries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 added_date DATE DEFAULT (date('now', 'localtime')),
@@ -825,17 +624,20 @@ class Rankings:
             CREATE INDEX IF NOT EXISTS idx_music_artist ON music_entries (artist);
             CREATE INDEX IF NOT EXISTS idx_music_tags ON music_entries (tags);
             CREATE INDEX IF NOT EXISTS idx_music_grade ON music_entries (grade);
-        """)
+        """
+
+        con, cur = get_connection(self.db_path)
+        cur.executescript(self.setup_db_script)
         con.commit()
 
         self.update_rankings(load=True, con_cur=(con, cur))
         con.close()
 
-        return ranking_list_box, ranking_sort_box, add_entry_box, search_entry_box, edit_entry_box
+        return list_box, sort_box, add_edit_box, search_box
 
 
     def update_rankings(self, load=False, con_cur=None):
-        self.widgets_dict["sort added_date"][1].max = date.today()
+        self.widgets_dict["sort added_date dates"][1].max = self.today
         if load:
             self.load_rankings(None, con_cur=con_cur)
         
@@ -851,7 +653,7 @@ class Rankings:
             sort_criteria = []
             for c_o in sort:
                 criterion, order = c_o
-                string = f"{criterion} {order}" if criterion not in self.type_to_person.values() and criterion != "title" else f"LOWER({criterion}) {order}"
+                string = f"{criterion} {order}" if criterion not in self.maps["category_to_person"].values() and criterion != "title" else f"LOWER({criterion}) {order}"
                 sort_criteria.append(string)
             sorting = "ORDER BY " + (", ".join(sort_criteria + ["RANDOM()"]) if sort_criteria else "RANDOM()")
 
@@ -866,7 +668,7 @@ class Rankings:
                     filter_criteria.append("grade >= ? AND grade <= ?")
                     filter_values.append(from_grade)
                     filter_values.append(to_grade)
-                elif criterion == self.type_to_person[t]:
+                elif criterion == self.maps["category_to_person"][t]:
                     for person in value:
                         filter_criteria.append(f"LOWER({person}) LIKE LOWER(?)")
                         filter_values.append(f"%{value}%")
@@ -913,7 +715,7 @@ class Rankings:
             query = f"""
                 SELECT * FROM {t}_entries
                 WHERE id = CAST(? AS INTEGER)
-                OR LOWER({self.type_to_person[t]}) LIKE LOWER(?)
+                OR LOWER({self.maps["category_to_person"][t]}) LIKE LOWER(?)
             """
             
             # add title search if needed and execute
@@ -933,9 +735,9 @@ class Rankings:
     def load_rankings(self, widget, con_cur=None):
         # setup 
         if not widget:
-            self.ranking_get_data({t:([],[]) for t in self.ranking_types}, con_cur=con_cur)
+            self.ranking_get_data({t:([],[]) for t in self.data["categories"]}, con_cur=con_cur)
 
-            for t in self.ranking_types:
+            for t in self.data["categories"]:
                 data = self.data["rankings"][t]
                 items = get_ranges(data)
                 set_range(self.widgets_dict[f"{t} range"], items)
@@ -943,18 +745,15 @@ class Rankings:
         else:  
             widget_id = widget.id.split()
 
-            if widget_id[1] == "range":
+            if widget_id[-1] == "range":
                 t = widget_id[0]
                 data = self.data["rankings"][t]
-                box = self.widgets_dict[f"{t} ranking box"]
+                box = self.widgets_dict[f"{t} box"]
                 box.clear()
 
                 start, end = [int(i) for i in widget.value.split('–')]
                 if start == 0 and end == 0:
-                    box.add(
-                        toga.Label(
-                        "Added entries will appear here.",
-                        style=Pack(padding=10, font_size=12, color="#EBF6F7")))
+                    box.add(self.widgets_dict[f"{t} no_entries label"])
                 else:
                     for i in range(start-1, end):
                         e = data[i]
@@ -964,7 +763,7 @@ class Rankings:
                             self.widgets_dict["entries"][t][id] = entry_box
                         box.add(self.widgets_dict["entries"][t][id])
 
-                self.widgets_dict[f"{t} ranking container"].position = toga.Position(0,0)
+                self.widgets_dict[f"{t} container"].position = toga.Position(0,0)
 
             elif widget_id[0] == "sort":
                 t = self.data["load type"]
@@ -973,182 +772,70 @@ class Rankings:
                 self.widgets_dict[f"{t} range"].items = items
 
             elif widget_id[0] == "search":
-                t = self.search_type.value.lower()
-                input = self.search_input.value
-                if input:
-                    self.ranking_get_data(search=(t, input.strip()))
-                    box = self.search_result_box
+                if input := self.widgets_dict["search input"].value.strip():
+                    t = self.maps["localized_to_system"][self.widgets_dict["category selection"].value]
+
+                    self.ranking_get_data(search=(t, input))
+                    box = self.widgets_dict["search result box"]
                     box.clear()
 
-                    if (data := self.data["search"]):
+                    if data := self.data["search"]:
                         for e in data:
                             box.add(self.get_entry_box(t, e, True))
                     else:
-                        box.add(
-                            toga.Label(
-                            "No entries found.",
-                            style=Pack(padding=10, font_size=12, color="#EBF6F7")))
-
-    
-    def change_range(self, widget):
-        change_range(widget, self.widgets_dict)
+                        box.add(self.widgets_dict["search no_entries label"])
 
 
     def type_change(self, widget):
-        t = widget.value.lower()
-        tab = widget.id.split()[0]
+        t = self.maps["localized_to_system"][widget.value]
+        tab = self.tab_on
         if tab == "sort":
-            self.sort_criteria[0].items = self.criteria[t]
+            self.widgets_dict["sort criterion selections"][0].items = self.data["criteria"][t]
             for i in range(3):
-                self.sort_criteria[i].value = self.data["sorting"][t][i][0]
-                self.sort_orders[i].value = self.data["sorting"][t][i][1]
-            box = self.filter_box
+                self.widgets_dict["sort criterion selections"][i].value = self.data["sorting"][t][i][0]
+                self.widgets_dict["sort order selections"][i].value = self.data["sorting"][t][i][1]
+            box = self.widgets_dict["filter box"]
             box.clear()
-            for w in self.filters[t]:
+            for w in self.widgets_load_lists["filter box"][t]:
+                w = self.check_widget(w)
                 box.add(w)
             data = self.data["filtering"][t]
             for c in data:
-                if c != "grade" and c != "start_year" and c != "added_date":
-                    self.widgets_dict[f"sort {c}"].value = data[c]
+                w_id = f"sort {c}" if c != "person" else c
+                if c not in ("grade", "start_year", "added_date"):
+                    self.widgets_dict[w_id + " input"].value = data[c]
                 else: 
-                    self.widgets_dict[f"sort {c}"][0].value, self.widgets_dict[f"sort {c}"][1].value = data[c]
+                    w_id += " " + {"grade": "selections", "start_year": "inputs", "added_date": "dates"}[c]
+                    self.widgets_dict[w_id][0].value, self.widgets_dict[w_id][1].value = data[c]
 
         elif tab == "search":
-            self.search_input.value = ""
-            self.search_result_box.clear()
-            title = "title, " if t != "music" else ""
-            placeholder = f"{title}{self.type_to_person[t]} or ID"
-            self.search_input.placeholder = placeholder
+            self.widgets_dict["search input"].value = ""
+            self.widgets_dict["search result box"].clear()
+            self.widgets_dict["search input"].placeholder = self.strings[f"search_{t}_placeholder"]
 
         else:    
-            box = self.widgets_dict[f"{tab} top_box"]
+            box = self.widgets_dict["add_edit top_box"]
             box.clear()
-            if t != "music":
-                box.add(self.widgets_dict[f"{tab} title label"], self.widgets_dict[f"{tab} title"], self.widgets_dict[f"{tab} switch"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")))
-            box.add(self.widgets_dict[f"{tab} {t}_person label"], self.widgets_dict[f"{tab} person"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")))
-            if t != "music":
-                box.add(self.widgets_dict[f"{tab} year box"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")))
-            box.add(
-                self.widgets_dict[f"{tab} tags label"], self.widgets_dict[f"{tab} tags"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                self.widgets_dict[f"{tab} note label"], self.widgets_dict[f"{tab} note"], toga.Divider(style=Pack(padding=(0,80), background_color="#27221F")),
-                self.widgets_dict[f"{tab} grade label"], self.widgets_dict[f"{tab} grade"])
+            for w in self.widgets_load_lists["add_edit top_boxes"][t]:
+                w = self.check_widget(w)
+                box.add(w)
+            if t == "music":
+                padd = 0
+            else:
+                padd = 18
+            self.widgets_dict["person input"].style.padding_bottom = padd
             
         self.type_change_check = False
 
-
-    def start_year_change(self, widget):
-        add = widget.id.split()[0] == "add"
-        year = widget.value
-        end_widget = self.add_end_year if add else self.edit_end_year
-        end_widget.min = end_widget.value = year
-
-
-    async def add_entry(self, widget):
-        t = self.add_type.value.lower()
-        if t != "music":
-            start_year, end_year = self.add_start_year.value, self.add_end_year.value
-            if not start_year and end_year:
-                await self.app.dialog(toga.InfoDialog("Error", "The end year cannot exist without the start year."))
-                return 0
-
-            title = self.add_title.value.strip()
-            title = titlecase(title) if self.add_switch.value else title
-            if not title:
-                await self.app.dialog(toga.InfoDialog("Error", "Title must be specified."))
-                return 0
-
-        person_value = self.add_person.value.strip()
-        if t == "music":   
-            if not person_value:
-                await self.app.dialog(toga.InfoDialog("Error", "Artist must be specified."))
-                return 0
-            if self.add_switch.value:
-                person = HumanName(person_value)
-                person.capitalize(force=True)
-                person= str(person)
-                person = person[0].upper() + person[1:]
-
-            else:
-                person = person_value
-
-        else:
-            person = [p.strip() for p in person_value.split(",") if p.strip()] if person_value else None
-            if person:
-                for i in range(len(person)):
-                    person[i] = HumanName(person[i])
-                    person[i].capitalize(force=True)
-                    person[i] = str(person[i])
-                    person[i] = person[i][0].upper() + person[i][1:]
-
-                person = ", ".join(sorted(person))
-        
-        tags = self.get_tags(self.add_tags.value)
-
-        note = self.add_note.value.strip()
-
-        grade = self.grade_to_int[self.add_grade.value]
-
-        if t != "music":
-            check_query = f"""
-                SELECT id FROM {t}_entries 
-                WHERE LOWER(title) = LOWER(?)
-            """
-            check_value = title
-            error_str = "title"
-
-            years = [int(y) if y else None for y in (start_year, end_year)]
-
-            
-            query = f"""
-                INSERT INTO {t}_entries (title, {self.type_to_person[t]}, start_year, end_year, tags, grade, note)
-                VALUES (?, ?, ?, ?, ?, ?, ?);
-            """
-            values = (title, person, years[0], years[1], tags, grade, note)
-
-        else:
-            check_query = f"""
-                SELECT id FROM music_entries 
-                WHERE LOWER(artist) = LOWER(?)
-            """
-            check_value = person
-            error_str = "artist"
-
-            query = """
-                INSERT INTO music_entries (artist, tags, grade, note)
-                VALUES (?, ?, ?, ?);
-            """
-            values = (person, tags, grade, note)
-        
-        con, cur = get_connection(self.db_path)
-
-        cur.execute(check_query, (check_value,))
-        if (check_id := cur.fetchone()):
-            error_msg = f"[{check_id[0]:06d}] entry already uses the " + error_str + "."
-            await self.app.dialog(toga.InfoDialog("Error", error_msg))
-            con.close()
-            return 0
-        
-        cur.execute(query, values)
-        con.commit()
-
-        self.ranking_get_data(rankings={t: (self.data["load sorting"][t], self.data["load filtering"][t])}, con_cur=(con, cur))
-
-        con.close()
-
-        items = get_ranges(self.data["rankings"][t])
-        set_range(self.widgets_dict[f"{t} range"], items)
-
-        self.app.open_ranking(widget=None, tab=t.capitalize())
-
-
     async def remove_entry_dialog(self, widget):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to remove the entry?"))
+        result = await self.app.dialog(toga.QuestionDialog(self.strings_c["confirmation"], "Are you sure you want to remove the entry?"))
         if result:
             await self.remove_entry()
 
 
     async def remove_entry(self):
-        t = self.edit_type.value.lower()
+        category = self.widgets_dict["category selection"].value
+        t = self.maps["localized_to_system"][category]
         id = self.temp_edit_id
         query = f"""
             DELETE FROM {t}_entries
@@ -1164,141 +851,34 @@ class Rankings:
 
         con.close()
 
-        if id in self.widgets_dict["entries"][t]:
-            del self.widgets_dict["entries"][t][id]
+        for w in (id, f"{id} edit_button"):
+            if w in self.widgets_dict["entries"][t]:
+                del self.widgets_dict["entries"][t][w]
+
 
         items = get_ranges(self.data["rankings"][t])
         set_range(self.widgets_dict[f"{t} range"], items)
 
-        self.app.open_ranking(widget=None, tab=t.capitalize())
+        self.app.open_ranking(widget=None, tab=category)
         
 
     async def save_entry_dialog(self, widget):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to save the entry?"))
+        result = await self.app.dialog(toga.QuestionDialog(self.strings_c["confirmation"], self.strings["save_entry_question"]))
         if result:
-            await self.save_entry()
-
-
-    async def save_entry(self):
-        t = self.edit_type.value.lower()
-        id = self.temp_edit_id
-
-        if t != "music":
-            start_year, end_year = self.edit_start_year.value, self.edit_end_year.value
-            if start_year and end_year:
-                if start_year > end_year:
-                    await self.app.dialog(toga.InfoDialog("Error", "The end year cannot exist without a start year."))
-                    return 0
-            elif not start_year and end_year:
-                await self.app.dialog(toga.InfoDialog("Error", "The start year cannot be later than the end year."))
-                return 0
-
-            title = self.edit_title.value.strip()
-            title = titlecase(title) if self.edit_switch.value else title
-            if not title:
-                await self.app.dialog(toga.InfoDialog("Error", "Title must be specified."))
-                return 0
-
-        person_value = self.edit_person.value.strip()
-        if t == "music":
-            if not person_value:
-                await self.app.dialog(toga.InfoDialog("Error", "Artist must be specified."))
-                return 0
-            else:
-                if self.edit_switch.value:
-                    person = HumanName(person_value)
-                    person.capitalize(force=True)
-                    person= str(person)
-                    person = person[0].upper() + person[1:]
-
-                else:
-                    person = person_value
-        else:
-            person = [p.strip() for p in person_value.split(",") if p.strip()] if person_value else None
-            if person:
-                for i in range(len(person)):
-                    person[i] = HumanName(person[i])
-                    person[i].capitalize(force=True)
-                    person[i] = str(person[i])
-                    person[i] = person[i][0].upper() + person[i][1:]
-
-                person = ", ".join(sorted(person))
-        
-        tags = self.get_tags(self.edit_tags.value)
-
-        note = self.edit_note.value.strip()
-
-        grade = self.grade_to_int[self.edit_grade.value]
-
-        if t != "music":
-            check_query = f"""
-                SELECT id FROM {t}_entries 
-                WHERE LOWER(title) = LOWER(?)
-            """
-            check_value = title
-            error_str = "title"
-
-            years = [int(y) if y else None for y in (start_year, end_year)]
-
-            values = (title, person, years[0], years[1], tags, grade, note, id)
-            query = f"""
-                UPDATE {t}_entries
-                SET title = ?, {self.type_to_person[t]} = ?, start_year = ?, end_year = ?, tags = ?, grade = ?, note = ?
-                WHERE id = ?;
-            """
-
-        else:
-            check_query = f"""
-                SELECT id FROM music_entries 
-                WHERE LOWER(artist) = LOWER(?)
-            """
-            check_value = person
-            error_str = "artist"
-
-            query = """
-                UPDATE music_entries
-                SET artist = ?, tags = ?, grade = ?, note = ?
-                WHERE id = ?;
-            """
-            values = (person, tags, grade, note, id)
-        
-        con, cur = get_connection(self.db_path)
-
-        cur.execute(check_query, (check_value,))
-        if (check_id := cur.fetchone()):
-            if check_id[0] != id:
-                error_msg = f"[{check_id[0]:06d}] entry already uses the " + error_str + "."
-                await self.app.dialog(toga.InfoDialog("Error", error_msg))
-                con.close()
-                return 0
-        
-        cur.execute(query, values)
-        con.commit()
-        
-        self.ranking_get_data(rankings={t: (self.data["load sorting"][t], self.data["load filtering"][t])}, con_cur=(con, cur))
-
-        con.close()
-        
-        if id in self.widgets_dict["entries"][t]:
-            del self.widgets_dict["entries"][t][id]
-
-        items = get_ranges(self.data["rankings"][t])
-        set_range(self.widgets_dict[f"{t} range"], items)
-
-        self.app.open_ranking(widget=None, tab=t.capitalize())
+            await self.add_save_entry(widget, id=self.temp_edit_id)
 
 
     def criterion_change(self, widget): 
         value = widget.value
         items = widget.items
-        n = int(widget.id.split()[2])
-        s_c = self.sort_criteria
-        s_o = self.sort_orders
+        n = int(widget.id.split()[-1])
+        s_c = self.widgets_dict["sort criterion selections"]
+        s_o = self.widgets_dict["sort order selections"]
         if value == "—":
             if n != 3:
                 s_c[n].items = [c.value for c in items]
                 s_c[n].enabled = False
-                s_o[n].value = "Asc"
+                s_o[n].value = "↑"
                 s_o[n].enabled = False
         else:
             if n != 3:
@@ -1308,19 +888,17 @@ class Rankings:
                 
 
     def reset_sort(self, widget):
-        self.sort_criteria[0].value = "—"
-        self.sort_orders[0].value = "Asc"
+        self.widgets_dict["sort criterion selections"][0].value = "—"
+        self.widgets_dict["sort order selections"][0].value = "↑"
 
 
     def reset_filter(self, widget):
-        self.sort_grades[0].value, self.sort_grades[1].value = "E", "S"
-        self.sort_tags_include.value = ""
-        self.sort_tags_exclude.value = ""
-        self.sort_added_dates[0].value, self.sort_added_dates[1].value = date(2024, 7, 25), date.today()
-        if (entry_type := self.sort_type.value.lower()) != "music":
-            self.sort_person.value = ""
-            self.sort_start_years[0].value, self.sort_start_years[1].value = "", ""
-
+        self.widgets_dict["sort grade selections"][0].value, self.widgets_dict["sort grade selections"][1].value = "E", "S"
+        self.widgets_dict["sort tags_include input"].value = ""
+        self.widgets_dict["sort tags_exclude input"].value = ""
+        self.widgets_dict["sort added_date dates"][0].value, self.widgets_dict["sort added_date dates"][1].value = date(2024, 7, 25), self.today
+        self.widgets_dict["person input"].value = ""
+        self.widgets_dict["sort start_year inputs"][0].value, self.widgets_dict["sort start_year inputs"][1].value = "", ""
 
 
     def format_title(self, title, max_length=52):
@@ -1340,70 +918,60 @@ class Rankings:
         else:
             return title
 
-
     def format_items(self, items, first_max_length=42, second_max_length=None):
-        if len(items) > first_max_length:
-            item_list = items.split(", ")
+        def fit_text(text, max_length):
+            """Helper to fit text within max_length, breaking at word/item boundaries."""
+            if len(text) <= max_length:
+                return text
             
-            first_row = ""
-            first_done = False
-            leftover = "" 
-
-            for item in item_list:
-                if not first_done:
-                    words = item.split(" ")
-                    i = 0
-                    for w in words:
-                        if len(first_row) + len(w) + (1 if first_row else 0) <= first_max_length:
-                            if first_row:
-                                if i == 0:
-                                    first_row += ", "
-                                else:
-                                    first_row += " "
-                            first_row += w
-                            i += 1
-                        else:
-                            if i == 0:
-                                first_row += ","
-                            else:
-                                leftover = " ".join(words[i:])
-
-                            first_done = True
-                            break
-                else:
-                    break
+            # Try to break at ", " (item boundary)
+            last_comma = text.rfind(", ", 0, max_length)
+            if last_comma > 0:
+                return text[:last_comma]
             
-            if second_max_length:
-                second_row = ""
-                item_list = [leftover,] + item_list[len(first_row.split(", ")):]
+            # Fall back to word boundary
+            last_space = text.rfind(" ", 0, max_length)
+            if last_space > 0:
+                return text[:last_space]
+            
+            # Last resort: hard cut
+            return text[:max_length-1]
 
-                for item in item_list:
-                    if len(second_row) + len(item) + (1 if second_row else 0) <= second_max_length:
-                        if second_row:
-                            second_row += ", "
-                        second_row += item
-                    else:
-                        if second_row:
-                            second_row += ", ..."
-                        break
-                
-                return first_row + "\n" + second_row
-            else:
-                if leftover:
-                    first_row = ", ".join(first_row.split(", ")[:-1])
-                return first_row + ", ..."
-        else:
+        if not items:
+            return "—\n" if second_max_length else "—"
+        
+        if len(items) <= first_max_length:
             return items + ("\n" if second_max_length else "")
         
+        # Find the best split point for first row
+        first_row = fit_text(items, first_max_length)
+        
+        if not second_max_length:
+            return first_row + ", ..."
+        
+        # Extract remaining items for second row
+        remaining = items[len(first_row):].lstrip(", ")
+        second_row = fit_text(remaining, second_max_length)
+        
+        # Add ellipsis if there's more content
+        if len(remaining) > len(second_row):
+            second_row += ", ..." if second_row else "..."
+        
+        return first_row + "\n" + second_row
 
-    def get_entry_box(self, entry_type, entry, edit_button=False):
+
+    def get_entry_box(self, category, entry, edit_button=False):
         id = entry[0]
         added_date = entry[1]
-        grade_idx = 4 if entry_type == "music" else 7
-        grade = self.int_to_grade[entry[grade_idx]]
+        tags_idx = 3 if category == "music" else 6
+        grade_idx = 4 if category == "music" else 7
+        grade = self.maps["num_to_name"][entry[grade_idx]]
 
-        if entry_type != "music":
-            title = self.format_title(entry[2])
+        tags = self.format_items(entry[tags_idx], first_max_length=46, second_max_length=52)
+        middle_txt = f"{self.strings_c['added']}: {added_date}\n{self.strings['tags']}: {tags}"
+        not_music_middle = None
+        if category != "music":
+            main = self.format_title(entry[2])
             person = self.format_items(entry[3], first_max_length=42) if entry[3] else "—"
             if entry[4]:
                 if entry[4] == entry[5]:
@@ -1412,77 +980,64 @@ class Rankings:
                     year = f"{entry[4]}–{entry[5]}"
             else:
                 year = "—"
-            if entry[6]:
-                tags = self.format_items(entry[6], first_max_length=46, second_max_length=52)
-            else:
-                tags = "—\n"
-
-            id_label = toga.Label(
-                f"[{id:06d}]", 
-                style=Pack(padding=4, font_size=11, color="#EBF6F7"))
-            main_label = toga.Label(
-                title, 
-                style=Pack(padding=4, font_size=11, font_weight="bold", color="#EBF6F7"))
-            middle_label = toga.Label(
-                f"{self.type_to_person[entry_type].capitalize()}: {person}\nYear: {year}  |  Added: {added_date}\nTags: {tags}", 
-                style=Pack(padding=4, font_size=11, color="#EBF6F7"))
-            grade_label = toga.Label(
-                f"Grade: {grade}", 
-                style=Pack(padding=4, font_size=11, color="#EBF6F7"))
-            
+            not_music_middle = f"{self.strings[self.maps['category_to_person'][category]]}: {person}\n{self.strings_c['year']}: {year}  |  "      
         else:
-            artist = entry[2]
-            if entry[3]:
-                tags = self.format_items(entry[3], first_max_length=46, second_max_length=52)
-            else:
-                tags = "—\n"
+            main = entry[2]
+            
+        if not_music_middle:
+            middle_txt = not_music_middle + middle_txt
 
-            id_label = toga.Label(
-                f"[{id:06d}]", 
-                style=Pack(padding=4, font_size=11, color="#EBF6F7"))
-            main_label = toga.Label(
-                artist, 
-                style=Pack(padding=4, font_size=11, font_weight="bold", color="#EBF6F7"))
-            middle_label = toga.Label(
-                f"Added: {added_date}\nTags: {tags}", 
-                style=Pack(padding=4, font_size=11, color="#EBF6F7"))
-            grade_label = toga.Label(
-                f"Grade: {grade}", 
-                style=Pack(padding=4, font_size=11, color="#EBF6F7"))
-        
+        id_label = toga.Label(
+            f"[{id:06d}]", 
+            style=Pack(padding=4, font_size=11, color=self.clrs[2])
+        )
+        main_label = toga.Label(
+            main, 
+            style=Pack(padding=4, font_size=11, font_weight="bold", color=self.clrs[2])
+        )
+        middle_label = toga.Label(
+            middle_txt, 
+            style=Pack(padding=4, font_size=11, color=self.clrs[2])
+        )
+        grade_label = toga.Label(
+            f"{self.strings['grade']}: {grade}", 
+            style=Pack(padding=4, font_size=11, color=self.clrs[2])
+        )
+
         children = [id_label, main_label, middle_label, grade_label]
         if edit_button:
-            if (button_id := f"{id} edit_button") not in self.widgets_dict["entries"][entry_type]:
-                self.widgets_dict["entries"][entry_type][button_id] = toga.Button(
-                    "Read/Edit", id=button_id, on_press=self.app.open_ranking_edit_entry, 
-                    style=Pack(padding=4, height=42, font_size=12, color="#EBF6F7", background_color="#27221F"))
-            children.append(self.widgets_dict["entries"][entry_type][button_id])
-        children.append(toga.Divider(style=Pack(background_color="#27221F")))
+            if (button_id := f"{id} edit_button") not in self.widgets_dict["entries"][category]:
+                self.widgets_dict["entries"][category][button_id] = toga.Button(
+                    self.strings["edit_button_label"], id=button_id, on_press=self.app.open_ranking_edit_entry, 
+                    style=Pack(padding=4, height=42, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+                )
+                self.reg([self.widgets_dict["entries"][category][button_id]])
+            children.append(self.widgets_dict["entries"][category][button_id])
+        children.append(self.get_div())
+
         entry_box = toga.Box(children=children, style=Pack(direction=COLUMN))
         
+        self.reg(children)
+
         return entry_box
     
 
     async def check_sort_inputs(self, widget):
-        t = self.sort_type.value.lower()
+        category = self.widgets_dict["category selection"].value
+        t = self.maps["localized_to_system"][category]
 
         # filter 
         filtering = []       
-        grades = [self.grade_to_int[self.sort_grades[i].value] for i in range(2)]
-        if grades[0] > grades[1]:
-            await self.app.dialog(toga.InfoDialog("Error", "The from (left) grade cannot be higher than the to (right) grade."))
-            return 0
+        grades = [self.maps["name_to_num"][self.widgets_dict["sort grade selections"][i].value] for i in range(2)]
         filtering.append(("grade", grades))
         
-        tags_include = self.sort_tags_include.value
-        tags_exclude = self.sort_tags_exclude.value
-
-        temp_include = set(tag.strip().lower() for tag in tags_include.split(",") if tag.strip())
-        temp_exclude = set(tag.strip().lower() for tag in tags_exclude.split(",") if tag.strip())
+        tags = [self.widgets_dict[f"sort tags_{s}clude input"].value.strip() for s in ("in", "ex")]
+        tags_include, tags_exclude = tags
+        temp_include, temp_exclude = [set(tag.strip().lower() for tag in t.split(",") if tag.strip()) for t in tags]
         
         if tags_include and tags_exclude:
             if temp_include & temp_exclude:
-                await self.app.dialog(toga.InfoDialog("Error", "Tags in the include and exclude lists cannot overlap."))
+                await self.app.dialog(toga.InfoDialog(self.strings_c["error"], self.strings["tag_overlap_error"]))
                 return 0
             else:
                 filtering.append(("tags_include", temp_include))
@@ -1492,48 +1047,42 @@ class Rankings:
         elif tags_exclude:
             filtering.append(("tags_exclude", temp_exclude))
 
-        dates = (self.sort_added_dates[0].value, self.sort_added_dates[1].value)
+        dates = [w.value for w in self.widgets_dict["sort added_date dates"]]
         if dates[0] > dates[1]:
-            await self.app.dialog(toga.InfoDialog("Error", "The from (left) date cannot be later than the to (right) date."))
+            await self.app.dialog(toga.InfoDialog(self.strings_c["error"], self.strings["sort_date_error"]))
             return 0
         filtering.append(("added_date", dates))
 
         if t != "music":
-            if (person := self.sort_person.value):
-                filtering.append((self.type_to_person[t], set(p.strip().lower() for p in person.split(",") if p.strip())))
+            if (person := self.widgets_dict["person input"].value):
+                filtering.append((self.maps["category_to_person"][t], set(p.strip().lower() for p in person.split(",") if p.strip())))
             
-            start_year = self.sort_start_years[0].value
-            end_year = self.sort_start_years[1].value
-            if start_year or end_year:
-                if start_year and end_year:
-                    if start_year[0] > end_year[1]:
-                        await self.app.dialog(toga.InfoDialog("Error", "The from (left) year cannot be later than the to (right) year."))
-                        return 0
-                    years = (int(start_year), int(end_year))
-                elif start_year:
-                    years = (int(start_year), date.today().year)
-                elif end_year:
-                    years = (-2601, int(end_year))
-                filtering.append(("start_year", years))
+            start_year, end_year = [int(w.value) if w.value else None for w in self.widgets_dict["sort start_year inputs"]]
+            years = [-2601, self.today.year]
+            if start_year:
+                years[0] = start_year
+            if end_year:
+                years[1] = end_year
+            filtering.append(("start_year", years))
             
             self.data["filtering"][t]["person"] = person
             self.data["filtering"][t]["start_year"] = (start_year, end_year)
 
         self.data["filtering"][t]["tags_include"] = tags_include
         self.data["filtering"][t]["tags_exclude"] = tags_exclude
-        self.data["filtering"][t]["grade"] = [self.int_to_grade[grades[i]] for i in range(2)]
-        self.data["filtering"][t]["added_date"] = [self.sort_added_dates[i].value for i in range(2)]
+        self.data["filtering"][t]["grade"] = [self.maps["num_to_name"][grades[i]] for i in range(2)]
+        self.data["filtering"][t]["added_date"] = [self.widgets_dict["sort added_date dates"][i].value for i in range(2)]
 
         self.data["load filtering"][t] = filtering
 
         # sort
-        sort = [(self.sort_criteria[i].value, self.sort_orders[i].value) for i in range(3)]
+        sort = [(self.widgets_dict["sort criterion selections"][i].value, self.widgets_dict["sort order selections"][i].value) for i in range(3)]
         self.data["sorting"][t] = sort
         sorting = []
         for i in sort:
             if i[0] != "—":
-                c = i[0].lower().replace("year", "start_year").replace("added date", "added_date")
-                o = "ASC" if i[1] == "Asc" else "DESC"
+                c = self.maps["localized_to_system"][i[0]].replace("year", "start_year")
+                o = "ASC" if i[1] == "↑" else "DESC"
                 sorting.append((c, o))
 
         self.data["load sorting"][t] = sorting
@@ -1543,19 +1092,19 @@ class Rankings:
 
         self.load_rankings(widget)
 
-        self.app.open_ranking(widget=None, tab=t.capitalize())
+        self.app.open_ranking(widget=None, tab=self.strings[t])
 
     
     def load_edit_box(self, widget):
         id = int(widget.id.split()[0])
         self.temp_edit_id = id
-        t = self.search_type.value.lower()
+        t = self.maps["localized_to_system"][self.widgets_dict["category selection"].value]
 
-        values = f"{self.type_to_person[t]}, tags, grade, note"
+        values = f"{self.maps['category_to_person'][t]}, tags, grade, note"
         widgets = ["person", "tags", "grade", "note"]
         if t != "music":
             values += ", title, start_year, end_year"
-            widgets += ["title", "start_year", "end_year"]
+            widgets.extend(["title", "start_year", "end_year"])
 
         query = f"""
             SELECT {values} FROM {t}_entries
@@ -1568,22 +1117,28 @@ class Rankings:
         con.close()
 
         for i in range(len(widgets)):
-            self.widgets_dict[f"edit {widgets[i]}"].value = self.int_to_grade[entry[i]] if i == 2 else entry[i]
-        self.widgets_dict["edit switch"].value = False
+            id = widgets[i]
+            id += " input" if widgets[i] != "grade" else " selection"
+            id = "add_edit " + id if widgets[i] != "person" else id
+            self.widgets_dict[id].value = entry[i] if i != 2 else self.maps["num_to_name"][entry[i]]
+
+        self.widgets_dict["add_edit title_person switch"].value = False
 
 
-    def clear_add_box(self):
-        for w in ["title", "person", "tags", "start_year", "end_year", "grade", "note", "switch"]:
+    def clear_add_box(self, widget=None):
+        for w in ["title", "person", "tags", "start_year", "end_year", "grade", "note", "title_person switch"]:
             if w == "grade":
-                self.widgets_dict[f"add {w}"].value = "S"
-            elif w == "switch":
-                self.widgets_dict[f"add {w}"].value = True
+                self.widgets_dict[f"add_edit {w} selection"].value = "S"
+            elif w == "title_person switch":
+                self.widgets_dict[f"add_edit {w}"].value = True
             else:
-                self.widgets_dict[f"add {w}"].value = ""
+                id = f"{w} input"
+                id = "add_edit " + id if w != "person" else id
+                self.widgets_dict[id].value = ""
 
 
     async def reset_ranking_dialog(self):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to reset Rankings database?"))
+        result = await self.app.dialog(toga.QuestionDialog(self.strings_c["confirmation"], self.strings["reset_db_question"]))
         if result:
             await self.reset_ranking()
 
@@ -1591,92 +1146,18 @@ class Rankings:
     async def reset_ranking(self):
         con, cur = get_connection(self.db_path)
         
-        for t in self.type_to_person:
+        for t in self.maps["category_to_person"]:
             query = f"DROP TABLE {t}_entries;"
             cur.execute(query)
             con.commit()
 
-        cur.executescript("""
-            CREATE TABLE book_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            added_date DATE DEFAULT (date('now', 'localtime')),
-            title TEXT NOT NULL,
-            author TEXT,
-            start_year INTEGER,
-            end_year INTEGER,
-            tags TEXT,
-            grade INTEGER NOT NULL,
-            note TEXT
-            );
-                          
-            CREATE TABLE movie_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            added_date DATE DEFAULT (date('now', 'localtime')),
-            title TEXT NOT NULL,
-            director TEXT,
-            start_year INTEGER,
-            end_year INTEGER,
-            tags TEXT,
-            grade INTEGER NOT NULL,
-            note TEXT
-            );
-
-            CREATE TABLE series_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            added_date DATE DEFAULT (date('now', 'localtime')),
-            title TEXT NOT NULL,
-            creator TEXT,
-            start_year INTEGER,
-            end_year INTEGER,
-            tags TEXT,
-            grade INTEGER NOT NULL,
-            note TEXT
-            );
-
-            CREATE TABLE music_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            added_date DATE DEFAULT (date('now', 'localtime')),
-            artist TEXT NOT NULL,
-            tags TEXT,
-            grade INTEGER NOT NULL,
-            note TEXT
-            );
-
-            CREATE INDEX idx_book_added_date ON book_entries (added_date);
-            CREATE INDEX idx_book_title ON book_entries (title);
-            CREATE INDEX idx_book_author ON book_entries (author);
-            CREATE INDEX idx_book_start_year ON book_entries (start_year);
-            CREATE INDEX idx_book_end_year ON book_entries (end_year);
-            CREATE INDEX idx_book_tags ON book_entries (tags);
-            CREATE INDEX idx_book_grade ON book_entries (grade);
-
-            CREATE INDEX idx_movie_added_date ON movie_entries (added_date);
-            CREATE INDEX idx_movie_title ON movie_entries (title);
-            CREATE INDEX idx_movie_director ON movie_entries (director);
-            CREATE INDEX idx_movie_start_year ON movie_entries (start_year);
-            CREATE INDEX idx_movie_end_year ON movie_entries (end_year);
-            CREATE INDEX idx_movie_tags ON movie_entries (tags);
-            CREATE INDEX idx_movie_grade ON movie_entries (grade);
-
-            CREATE INDEX idx_series_added_date ON series_entries (added_date);
-            CREATE INDEX idx_series_title ON series_entries (title);
-            CREATE INDEX idx_series_creator ON series_entries (creator);
-            CREATE INDEX idx_series_start_year ON series_entries (start_year);
-            CREATE INDEX idx_series_end_year ON series_entries (end_year);
-            CREATE INDEX idx_series_tags ON series_entries (tags);
-            CREATE INDEX idx_series_grade ON series_entries (grade);
-          
-            CREATE INDEX idx_music_added_date ON music_entries (added_date);
-            CREATE INDEX idx_music_artist ON music_entries (artist);
-            CREATE INDEX idx_music_tags ON music_entries (tags);
-            CREATE INDEX idx_music_grade ON music_entries (grade);
-        """)
+        cur.executescript(self.setup_db_script)
         con.commit()
         con.close()
 
         self.app.setup_ui(rankings=True)
 
-        await self.app.dialog(toga.InfoDialog("Success", "Rankings database has been reset successfully."))
+        await self.app.dialog(toga.InfoDialog(self.strings_c["success"], self.strings["reset_db_success"]))
 
     
     def get_tags(self, value):
@@ -1691,25 +1172,26 @@ class Rankings:
                     added.add(t.lower())
                     tags.append(t)
 
-        tags = titlecase(", ".join(tags))
-        tags = titlecase(", ".join(sorted(tags.split(", "))))
+        tags = titlecase(", ".join(sorted(tags, key=lambda tag: tag.lower())))
         
         return tags
 
 
-    async def replace_entries_tag_dialog(self, entry_type, old, new):
-        result = await self.app.dialog(toga.QuestionDialog("Confirmation", "Are you sure you want to replace the tag in all entries of the type?"))
+    async def replace_entries_tag_dialog(self, category, old, new):
+        result = await self.app.dialog(toga.QuestionDialog(self.strings_c["confirmation"], self.strings["replace_tag_question"]))
         if result:
-            await self.replace_entries_tag(entry_type, old, new)
+            await self.replace_entries_tag(category, old, new)
 
 
-    async def replace_entries_tag(self, entry_type, old, new):
-        con, cur = get_connection(self.db_path)
+    async def replace_entries_tag(self, category, old, new):
+        category = self.maps["localized_to_system"][category]
 
         query = f"""
-            SELECT id, tags FROM {entry_type}_entries
+            SELECT id, tags FROM {category}_entries
             WHERE LOWER(tags) LIKE LOWER(?);
         """
+
+        con, cur = get_connection(self.db_path)
         cur.execute(query, (f"%{old}%",))
 
         entries = cur.fetchall()
@@ -1719,25 +1201,198 @@ class Rankings:
                 id = e[0]
                 old_tags = e[1].split(", ")
 
-                new_tags = [t for t in old_tags if t.lower() != old.lower()]
+                new_tags = [tag for tag in old_tags if tag.lower() != old.lower()]
                 if new and new not in new_tags:
-                    new_tags = sorted(new_tags+[new,])
+                    new_tags = sorted(new_tags + [new,])
                 new_tags = ", ".join(new_tags)
 
                 new_entries.append((id, new_tags))
             
-            query_start = f"UPDATE {entry_type}_entries"
+            query_start = f"UPDATE {category}_entries"
             for id, tags in new_entries:
-                cur.execute(query_start+" SET tags = ? WHERE id = ?", (tags, id,))
+                cur.execute(query_start + " SET tags = ? WHERE id = ?", (tags, id,))
             con.commit()
 
-            l = len(new_entries)
-            s = "entries'" if l > 1 else "entry's" 
-            await self.app.dialog(toga.InfoDialog("Success", f"{l} {s} tags have been updated successfully."))
+            if len(new_entries) == 1:
+                txt = self.strings["replace_tag_success"][0]
+            else:
+                txt = self.strings["replace_tag_success"][1].format(count=len(new_entries))
+            await self.app.dialog(toga.InfoDialog(self.strings_c["success"], txt))
 
             self.app.setup_rankings = True
 
         else:
-            await self.app.dialog(toga.InfoDialog("Error", "No entry found with the old tag."))
+            await self.app.dialog(toga.InfoDialog(self.strings_c["error"], self.strings["replace_tag_no_entries"]))
         
         con.close()
+
+    
+    def set_tab_on(self, tab, widget=None, category=None):
+        if tab == "add":
+            self.clear_add_box()
+
+        if self.tab_on != tab:
+            self.tab_on = tab
+            selection = self.widgets_dict["category selection"]
+            if tab == "add" or tab == "edit":
+                box = self.widgets_dict["add_edit box"]
+                box.clear()
+                for w in self.widgets_load_lists[f"{tab} box"]:
+                    w = self.check_widget(w)
+                    box.add(w)
+                    
+                if tab == "edit":
+                    self.load_edit_box(widget)
+                
+            elif tab == "search":
+                box = self.widgets_dict["search category box"]
+                box.clear()
+                box.add(self.widgets_dict["category box"])
+            elif tab == "sort":
+                self.widgets_dict["person input"].style.padding_bottom = 18
+                box = self.widgets_dict["sort box"]
+                box.clear()
+                for w in self.widgets_load_lists["sort box"]:
+                    w = self.check_widget(w)
+                    box.add(w)
+
+            selection.enabled = True if tab in ["add", "search"] else False
+            if category:
+                self.type_change_check = True
+                selection.value = category
+
+            if not category or self.type_change_check:
+                self.type_change(selection)
+
+
+    def get_add_edit_values(self):
+        return {
+            "category": self.widgets_dict["category selection"].value,
+            "title": self.widgets_dict["add_edit title input"].value,
+            "person": self.widgets_dict["person input"].value,
+            "autoformat": self.widgets_dict["add_edit title_person switch"].value,
+            "start_year": self.widgets_dict["add_edit start_year input"].value,
+            "end_year": self.widgets_dict["add_edit end_year input"].value,
+            "tags": self.widgets_dict["add_edit tags input"].value,
+            "grade": self.widgets_dict["add_edit grade selection"].value,
+            "note": self.widgets_dict["add_edit note input"].value
+        }
+    
+
+    async def add_save_entry(self, widget, id=None):
+        values = self.get_add_edit_values()
+
+        t = self.maps["localized_to_system"][values["category"]]
+        if t != "music":
+            start_year, end_year = values["start_year"], values["end_year"]
+            if not start_year and end_year:
+                await self.app.dialog(toga.InfoDialog(self.strings_c["error"], self.strings["no_start_year_error"]))
+                return 0
+            
+            elif start_year and not end_year:
+                end_year = start_year
+
+            title = values["title"].strip()
+            if not title:
+                await self.app.dialog(toga.InfoDialog(self.strings_c["error"], self.strings["no_title_error"]))
+                return 0
+            title = titlecase(title) if values["autoformat"] else title
+
+        person = values["person"].strip()
+        if t == "music":   
+            if not person:
+                await self.app.dialog(toga.InfoDialog(self.strings_c["error"], self.strings["no_artist_error"]))
+                return 0
+            if values["autoformat"]:
+                person = titlecase(person)
+
+        else:
+            person = [p.strip() for p in person.split(",") if p.strip()] if person else None
+            if person:
+                for i in range(len(person)):
+                    person[i] = HumanName(person[i])
+                    person[i].capitalize(force=True)
+                    person[i] = str(person[i])
+
+                person = ", ".join(sorted(person))
+        
+        tags = self.get_tags(values["tags"])
+
+        note = values["note"].strip()
+
+        grade = self.maps["name_to_num"][values["grade"]]
+
+        if t != "music":
+            check_str, check_value = "title", title
+
+            years = [int(y) if y else None for y in (start_year, end_year)]
+            
+            query_values = (title, person, years[0], years[1], tags, grade, note)
+            if not id:
+                query = f"""
+                    INSERT INTO {t}_entries (title, {self.maps["category_to_person"][t]}, start_year, end_year, tags, grade, note)
+                    VALUES (?, ?, ?, ?, ?, ?, ?);
+                """
+            else:
+                query_values += (id,)
+                query = f"""
+                    UPDATE {t}_entries
+                    SET title = ?, {self.maps["category_to_person"][t]} = ?, start_year = ?, end_year = ?, tags = ?, grade = ?, note = ?
+                    WHERE id = ?;
+                """
+        else:
+            check_str, check_value = "artist", person
+
+            query_values = (person, tags, grade, note)
+            if not id:
+                query = """
+                    INSERT INTO music_entries (artist, tags, grade, note)
+                    VALUES (?, ?, ?, ?);
+                """
+            else:
+                query_values += (id,)
+                query = """
+                    UPDATE music_entries
+                    SET artist = ?, tags = ?, grade = ?, note = ?
+                    WHERE id = ?;
+                """
+        
+        check_query = f"""
+            SELECT id FROM {t}_entries 
+            WHERE LOWER({check_str}) = LOWER(?)
+        """
+
+        con, cur = get_connection(self.db_path)
+
+        cur.execute(check_query, (check_value,))
+        if (check_id := cur.fetchone()):
+            if not id or check_id[0] != id:
+                # If id is None, it means we are adding a new entry, so we should not allow duplicates.
+                # If id is not None, we are editing an existing entry, so we can allow the same id.
+                con.close()
+
+                error_msg = self.strings[f"{check_str}_already_used"].format(id=check_id[0])
+                await self.app.dialog(toga.InfoDialog(self.strings_c["error"], error_msg))
+                return 0
+        
+        cur.execute(query, query_values)
+        con.commit()
+
+        self.ranking_get_data(rankings={t: (self.data["load sorting"][t], self.data["load filtering"][t])}, con_cur=(con, cur))
+
+        if id and id in self.widgets_dict["entries"][t]:
+            del self.widgets_dict["entries"][t][id]
+
+        con.close()
+
+        items = get_ranges(self.data["rankings"][t])
+        set_range(self.widgets_dict[f"{t} range"], items)
+
+        self.app.open_ranking(widget=None, tab=values["category"])
+
+    
+    def check_widget(self, widget):
+        if widget == "partial div":
+            widget = self.get_div((0,80))
+            self.reg([widget])
+        return widget

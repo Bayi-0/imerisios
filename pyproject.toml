@@ -2,7 +2,7 @@
 [tool.briefcase]
 project_name = "Imerisios"
 bundle = "com.amateru"
-version = "2.8.2"
+version = "3.0.0"
 url = "https://amateru.com/imerisios"
 license = "BSD license"
 author = "Vladyslav Bashchuk"
@@ -37,10 +37,10 @@ requires = [
     "schedule", 
     "Pillow", 
     "titlecase", 
-    "nameparser"
+    "nameparser",
+    "pycountry"
 ]
 test_requires = ["pytest",]
-
 
 [tool.briefcase.app.imerisios.macOS]
 universal_build = true
@@ -191,9 +191,9 @@ requires = [
     "toga-android~=0.4.0",
 ]
 
-splash_background_color = "#27221F"
-primary_color = "#27221F"
-primary_color_dark = "#27221F"
+splash_background_color = "#393432"
+primary_color = "#6E5F57"
+primary_color_dark = "#393432"
 
 build_gradle_dependencies = [
     "androidx.appcompat:appcompat:1.6.1",

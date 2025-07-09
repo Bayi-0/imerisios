@@ -8,48 +8,63 @@ class CoinFlip:
     def __init__(self, app):
         self.app = app
 
+        self.strings = self.app.strings["coin"]
+    
 
-    def get_heads_box(self):
-        heads_title = toga.Label(
-            "Heads", 
-            style=Pack(padding=(14,0,2), text_align="center", font_weight="bold", font_size=48, color="#EBF6F7"))
-        heads_image = toga.ImageView(
-            toga.Image("resources/coin/heads.png"), 
-            style=Pack(flex=0.5))
-        heads_question = toga.Label(
-            "Will you embrace the destiny\ndecided by this coin flip,\naccepting its outcome as the\nguiding force of your fate?", 
-            style=Pack(padding=(4,8,10), text_align="center", font_size=18, color="#EBF6F7"))
-        heads_button = toga.Button(
-            "I shall", on_press=self.app.open_coin, 
-            style=Pack(height=140, padding=11, font_size=28, color="#EBF6F7", background_color="#27221F"))
+    @property
+    def clrs(self):
+        return self.app.clrs
+    
 
-        heads_box = toga.Box(
-            children=[heads_title, heads_image, heads_question, heads_button], 
-            style=Pack(direction=COLUMN, background_color="#393432"))
-        
-        return heads_box
+    def reg(self, widgets=[]):
+        self.app.reg(widgets)
 
 
-    def get_tails_box(self):
-        tails_title = toga.Label(
-            "Tails", 
-            style=Pack(padding=(14,0,2), text_align="center", font_weight="bold", font_size=48, color="#EBF6F7"))
-        tails_image = toga.ImageView(toga.Image("resources/coin/tails.png"), style=Pack(flex=0.5))
-        tails_question = toga.Label(
-            "Will you embrace the destiny\ndecided by this coin flip,\naccepting its outcome as the\nguiding force of your fate?", 
-            style=Pack(padding=(4,8,10), text_align="center", font_size=18, color="#EBF6F7"))
-        tails_button = toga.Button(
-            "I shall", on_press=self.app.open_coin, 
-            style=Pack(height=140, padding=11, font_size=28, color="#EBF6F7", background_color="#27221F"))
-        
-        tails_box = toga.Box(
-            children=[tails_title, tails_image, tails_question, tails_button], 
-            style=Pack(direction=COLUMN, background_color="#393432"))
-        
-        return tails_box
+    def get_coinside_boxes(self):
+        boxes = []
+        for side in ["heads", "tails"]:
+            title = toga.Label(
+                self.strings[side], 
+                style=Pack(padding=(14,0,2), text_align="center", font_weight="bold", font_size=38, color=self.clrs[2])
+            )
+            img = toga.ImageView(
+                toga.Image(f"resources/images/coin/{side}.png"), 
+                style=Pack(flex=0.5)
+            )
+            question = toga.Label(
+                self.strings["fate_question"], 
+                style=Pack(padding=(4,8,10), text_align="center", font_size=14, color=self.clrs[2])
+            )
+            button = toga.Button(
+                self.strings["shall"], on_press=self.app.open_coin, 
+                style=Pack(height=120, padding=11, font_size=18, color=self.clrs[2], background_color=self.clrs[1])
+            )
+
+            box = toga.Box(
+                children=[title, img, question, button], 
+                style=Pack(direction=COLUMN, background_color=self.clrs[0])
+            )
+            boxes.append(box)
+
+            self.reg([title, question, button, box])
+
+        return boxes
         
 
     def get_coin_box(self):
+        def get_quotes_box(quotes):
+            box = toga.Box(style=Pack(direction=COLUMN, flex=0.4, padding=4))
+            for i in range(0, len(quotes)-1, 2):
+                l1 = toga.Label(quotes[i], style=Pack(padding=(4,4,0), font_size=7, color=self.clrs[2]))
+                l2 = toga.Label(
+                    quotes[i+1], 
+                    style=Pack(padding=(0,4,4), text_align="right", font_size=7, font_style="italic", color=self.clrs[2])
+                )
+                box.add(l1)
+                box.add(l2)
+                self.reg([l1, l2])
+            return box
+        
         quotes_top = [
             "“You can do anything. Doesn't mean you have to.”", "— Geralt, The Witcher by Andrzej Sapkowski", 
             "“Fate invariably finds a way to thwart the schemes of men.”", "— Andrzej Sapkowski, The Witcher",
@@ -60,13 +75,6 @@ class CoinFlip:
             "“The mystery of life isn't a problem to solve, but a reality to experience.”", "— Frank Herbert, The Dune",
             "“Destiny is a double-edged sword. You are one edge, the other is death.”", "— Queen Calanthe, The Witcher by Andrzej Sapkowski"
         ]
-        coin_box_top = toga.Box(style=Pack(direction=COLUMN, flex=0.4, padding=4))
-        for i in range(0, len(quotes_top)-1, 2):
-            coin_box_top.add(toga.Label(quotes_top[i], style=Pack(padding=(4,4,0), font_size=7, color="#EBF6F7")))
-            coin_box_top.add(
-                toga.Label(quotes_top[i+1], 
-                style=Pack(padding=(0,4,4), text_align="right", font_size=7, font_style="italic", color="#EBF6F7")))
-
         quotes_bottom = [
             "“But now, if I have to choose between one evil and another, then I prefer not to choose at all.”", "— Geralt, The Witcher by Andrzej Sapkowski", 
             "“Fate is the same for the man who holds back, the same if he fights hard. We are all held in a\nsingle honor, the brave with the weaklings. A man dies still if he has done nothing, as one who\nhas done much.”", "— Achilles, The Iliad by Homer",
@@ -76,21 +84,21 @@ class CoinFlip:
             "“All we have to decide is what to do with the time that is given us.”", "— Gandalf, The Lord of the Rings by J. R. R. Tolkien",
             "“There is no destiny. It's but a slow death. But you're right, I must fulfil my destiny.”", "— Geralt, The Witcher by Andrzej Sapkowski"
         ]  
-        coin_box_bottom = toga.Box(style=Pack(direction=COLUMN, flex=0.4, padding=4))
-        for i in range(0, len(quotes_bottom)-1, 2):
-            coin_box_bottom.add(toga.Label(quotes_bottom[i], style=Pack(padding=(4,4,0), font_size=7, color="#EBF6F7")))
-            coin_box_bottom.add(toga.Label(
-                quotes_bottom[i+1], 
-                style=Pack(padding=(0,4,4), text_align="right", font_size=7, font_style="italic", color="#EBF6F7")))
+        quotes_boxes = [get_quotes_box(quotes) for quotes in (quotes_top, quotes_bottom)] 
             
-        self.coin_sides = [self.get_heads_box(), self.get_tails_box()]
+        self.coin_sides = self.get_coinside_boxes()
+
         flip_button = toga.Button(
-            "Flip the coin", on_press=self.flip_coin, 
-            style=Pack(flex=0.2, height=140, padding=18, font_size=28, color="#EBF6F7", background_color="#27221F"))
+            self.strings["flip_coin"], on_press=self.flip_coin, 
+            style=Pack(flex=0.2, height=140, padding=18, font_size=18, color=self.clrs[2], background_color=self.clrs[1])
+        )
         
         coin_box = toga.Box(
-            children=[coin_box_top, flip_button, coin_box_bottom],
-            style=Pack(direction=COLUMN, background_color="#393432"))
+            children=[quotes_boxes[0], flip_button, quotes_boxes[1]],
+            style=Pack(direction=COLUMN, background_color=self.clrs[0])
+        )
+        
+        self.reg([coin_box, flip_button])
         
         return coin_box
         

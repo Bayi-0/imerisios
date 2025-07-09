@@ -3,11 +3,21 @@ import sqlite3 as sql
 import calendar
 import PIL
 import calendar
+import toga
+from toga.style import Pack
 from PIL import Image, ImageDraw, ImageFont
 
+language_to_alpha3 = {
+    "English": "eng",
+    "Русский": "rus",
+    "Українська": "ukr",
+    "한국어": "kor",
+    "Latina": "lat",
+    "Dansk": "dan"
+}
 
 def length_check(widget):
-    length = int(widget.id.split()[2])
+    length = int(widget.id.split()[-1])
     if len(widget.value) > length:
         widget.readonly = True
         widget.value = widget.value[:length]
@@ -32,11 +42,10 @@ def create_calendar_image(year, month, file_name, marks):
     # Set up the calendar
     cal = calendar.Calendar()
     month_days = cal.monthdayscalendar(year, month)
-    month_name = calendar.month_name[month]
 
     # Create an image with dark background
     img_width, img_height = 720, 500
-    img = Image.new("RGB", (img_width, img_height), "#27221F")
+    img = Image.new("RGB", (img_width, img_height), "#252321")
     draw = ImageDraw.Draw(img)
 
     # Set up fonts
@@ -50,7 +59,7 @@ def create_calendar_image(year, month, file_name, marks):
     skip_color = '#87CEEB'  # Light blue
 
     # Draw month and year
-    draw.text((img_width // 2 - 100, 20), f"{month_name} {year}", fill=neutral_text_color, font=font_large)
+    draw.text((img_width // 2 - 100, 20), f"{calendar.month_name[month]} {year}", fill=neutral_text_color, font=font_large)
 
     # Draw days of the week
     days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -73,13 +82,6 @@ def create_calendar_image(year, month, file_name, marks):
 
     # Save the image
     img.save(file_name)
-
-
-def get_month_dicts():
-    month_num_to_name = {i: calendar.month_name[i] for i in range(1, 13)}
-    month_name_to_num = {name: num for num, name in month_num_to_name.items()}
-
-    return month_num_to_name, month_name_to_num
 
 
 def get_ranges(items, chunk=10):
@@ -126,3 +128,19 @@ def set_range(widget, items):
     widget.items = items
     if idx > 0:
         widget.value = widget.items[idx].value
+
+
+def reverse_dict(d):
+    return {v: k for k, v in d.items()}
+
+
+def get_back_next_buttons(id, func, color, background_color):
+    buttons = []
+    for strs in (("<", "back"), (">", "next")):
+        button = toga.Button(
+            strs[0], id=f"{id} {strs[1]} button",
+            on_press=func, 
+            style=Pack(flex=0.2, padding=4, height=44, font_size=13, color=color, background_color=background_color)
+        )
+        buttons.append(button)
+    return buttons
