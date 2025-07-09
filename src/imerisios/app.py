@@ -162,7 +162,7 @@ class Imerisios(toga.App):
             ]:
                 button = toga.Button(
                     val, on_press=func, 
-                    style=Pack(flex=0.5, height=button_height, font_size=20, color=self.clrs[2], background_color=self.clrs[1])
+                    style=Pack(flex=0.5, height=button_height, font_size=16, color=self.clrs[2], background_color=self.clrs[1])
                 )
                 img = toga.ImageView(toga.Image(f"resources/images/menu/{img_path}.png"), style=Pack(flex=0.5, padding=padd))
                 chld = [button, img] if padd[0] != 0 else [img, button]
