@@ -239,6 +239,7 @@
         "replace_tag_input_placeholders": [
             "Введите старый тег...",
             "Введите новый тег..."
-        ]
+        ],
+        "include_unspecified_year_switch": "Включить неуказанный год"
     }
 }

@@ -243,7 +243,7 @@
         "replace_tag_input_placeholders": [
             "Indtast det gamle tag...",
             "Indtast det nye tag..."
-        ]
-
+        ],
+        "include_unspecified_year_switch": "Inkluder ubestemt år"
     }
 }

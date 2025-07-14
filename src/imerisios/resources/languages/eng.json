@@ -243,6 +243,7 @@
         "replace_tag_input_placeholders": [
             "Enter the old tag...",
             "Enter the new tag..."
-        ]
+        ],
+        "include_unspecified_year_switch": "Include unspecified year"
     }
 }

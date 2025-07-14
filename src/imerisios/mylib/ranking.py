@@ -38,11 +38,11 @@ class Rankings:
             "category_to_person": {"book": "author", "movie": "director", "series": "creator", "music": "artist"},
             "num_to_name": {i + 1: self.data["grades"][i] for i in range(len(self.data["grades"]))},
             "localized_to_system": 
-                {self.strings[k]: k for k in ["grade", "title", "added_date"]} | 
+                {self.strings[k]: k for k in ["grade", "title", "added_date", "author", "director", "creator", "artist"]} | 
                 {k: v for k, v in zip(self.strings["categories"], self.data["categories"])}
         }
         self.maps["name_to_num"] = reverse_dict(self.maps["num_to_name"])
-        self.maps["localized_to_system"]["year"] = self.strings_c["year"]
+        self.maps["localized_to_system"][self.strings_c["year"]] = "year"
 
 
     @property
@@ -292,7 +292,7 @@ class Rankings:
         self.data["sorting"] = {t: [("—", "↑") for _ in range(3)] for t in self.data["categories"]}
 
         self.data["filtering"] = {
-            t: {"grade": ("E", "S"), "person": "", "tags_include": "", "tags_exclude": "", "start_year": ("", ""), "added_date": (date(year=2024, month=7, day=25), self.today)}
+            t: {"grade": ("E", "S"), "person": "", "tags_include": "", "tags_exclude": "", "start_year": ("", "", True), "added_date": (date(year=2024, month=7, day=25), self.today)}
             for t in self.data["categories"]
         }
         del self.data["filtering"]["music"]["person"]
@@ -401,7 +401,7 @@ class Rankings:
             toga.NumberInput(
                 step=1, 
                 min=-2601, max=self.today.year,
-                style=Pack(flex=0.5, padding=(0,18,18), height=44, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
+                style=Pack(flex=0.5, padding=(0,18), height=44, font_size=12, color=self.clrs[2], background_color=self.clrs[1])
             )
             for _ in range(2)]
         
@@ -411,6 +411,13 @@ class Rankings:
         self.widgets_dict["sort start_year inputs"][0].on_change = adjust_year
 
         start_year_box = toga.Box(children=self.widgets_dict["sort start_year inputs"], style=Pack(direction=ROW))
+
+        self.widgets_dict["sort start_year switch"] = toga.Switch(
+            text=self.strings["include_unspecified_year_switch"],
+            id="start_year switch",
+            value=True, 
+            style=Pack(padding=(8,18,18), font_size=12, color=self.clrs[2])
+        )
         
         ## added date between
         added_date_label = self.get_label(f"{self.strings['added_date']}:")
@@ -453,7 +460,7 @@ class Rankings:
                 l.extend([self.widgets_dict[f"{t}_person label"], person_input, "partial div"])
             l.extend([tags_label, self.widgets_dict["sort tags_include input"], self.widgets_dict["sort tags_exclude input"], "partial div"])
             if t != "music":
-                l.extend([start_year_label, start_year_box, "partial div"])
+                l.extend([start_year_label, start_year_box, self.widgets_dict["sort start_year switch"], "partial div"])
             l.extend([added_date_label, added_date_box, "partial div", reset_button])
 
             self.widgets_load_lists["filter box"][t] = l
@@ -681,8 +688,10 @@ class Rankings:
                         filter_criteria.append("LOWER(tags) NOT LIKE LOWER(?)")
                         filter_values.append(f"%{tag}%")
                 elif criterion == "start_year":
-                    from_year, to_year = value
-                    filter_criteria.append("start_year >= ? AND start_year <= ?")
+                    from_year, to_year, no_year = value
+                    s = "start_year >= ? AND start_year <= ?"
+                    s = "((" + s + ") OR start_year IS NULL)" if no_year else s
+                    filter_criteria.append(s)
                     filter_values.append(from_year)
                     filter_values.append(to_year)
                 elif criterion == "added_date":
@@ -767,7 +776,7 @@ class Rankings:
 
             elif widget_id[0] == "sort":
                 t = self.data["load type"]
-                self.ranking_get_data({t:(self.data["load sorting"][t], self.data["load filtering"][t])})
+                self.ranking_get_data({t: (self.data["load sorting"][t], self.data["load filtering"][t])})
                 items = get_ranges(self.data["rankings"][t])
                 self.widgets_dict[f"{t} range"].items = items
 
@@ -802,11 +811,14 @@ class Rankings:
             data = self.data["filtering"][t]
             for c in data:
                 w_id = f"sort {c}" if c != "person" else c
-                if c not in ("grade", "start_year", "added_date"):
+                if c not in ("grade", "added_date", "start_year"):
                     self.widgets_dict[w_id + " input"].value = data[c]
                 else: 
                     w_id += " " + {"grade": "selections", "start_year": "inputs", "added_date": "dates"}[c]
-                    self.widgets_dict[w_id][0].value, self.widgets_dict[w_id][1].value = data[c]
+                    if c != "start_year":
+                        self.widgets_dict[w_id][0].value, self.widgets_dict[w_id][1].value = data[c]
+                    else:
+                        self.widgets_dict[w_id][0].value, self.widgets_dict[w_id][1].value, self.widgets_dict["sort start_year switch"].value = data[c]
 
         elif tab == "search":
             self.widgets_dict["search input"].value = ""
@@ -918,6 +930,7 @@ class Rankings:
         else:
             return title
 
+
     def format_items(self, items, first_max_length=42, second_max_length=None):
         def fit_text(text, max_length):
             """Helper to fit text within max_length, breaking at word/item boundaries."""
@@ -925,9 +938,9 @@ class Rankings:
                 return text
             
             # Try to break at ", " (item boundary)
-            last_comma = text.rfind(", ", 0, max_length)
+            last_comma = text.rfind(", ", 0, max_length - 1)
             if last_comma > 0:
-                return text[:last_comma]
+                return text[:last_comma + 1]
             
             # Fall back to word boundary
             last_space = text.rfind(" ", 0, max_length)
@@ -955,7 +968,7 @@ class Rankings:
         
         # Add ellipsis if there's more content
         if len(remaining) > len(second_row):
-            second_row += ", ..." if second_row else "..."
+            second_row += " ..." if second_row else "..."
         
         return first_row + "\n" + second_row
 
@@ -1058,7 +1071,7 @@ class Rankings:
                 filtering.append((self.maps["category_to_person"][t], set(p.strip().lower() for p in person.split(",") if p.strip())))
             
             start_year, end_year = [int(w.value) if w.value else None for w in self.widgets_dict["sort start_year inputs"]]
-            years = [-2601, self.today.year]
+            years = [-2601, self.today.year, self.widgets_dict["sort start_year switch"].value]
             if start_year:
                 years[0] = start_year
             if end_year:
@@ -1066,7 +1079,7 @@ class Rankings:
             filtering.append(("start_year", years))
             
             self.data["filtering"][t]["person"] = person
-            self.data["filtering"][t]["start_year"] = (start_year, end_year)
+            self.data["filtering"][t]["start_year"] = years
 
         self.data["filtering"][t]["tags_include"] = tags_include
         self.data["filtering"][t]["tags_exclude"] = tags_exclude
@@ -1231,7 +1244,7 @@ class Rankings:
         if tab == "add":
             self.clear_add_box()
 
-        if self.tab_on != tab:
+        if self.tab_on != tab or category:
             self.tab_on = tab
             selection = self.widgets_dict["category selection"]
             if tab == "add" or tab == "edit":
@@ -1263,6 +1276,11 @@ class Rankings:
 
             if not category or self.type_change_check:
                 self.type_change(selection)
+
+        if tab == "add" or tab == "edit":
+            self.widgets_dict["add_edit top_container"].position = toga.Position(0,0)
+        elif tab == "sort":
+            self.widgets_dict["sort container"].position = toga.Position(0,0)
 
 
     def get_add_edit_values(self):

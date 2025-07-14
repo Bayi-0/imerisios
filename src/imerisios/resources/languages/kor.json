@@ -243,6 +243,7 @@
         "replace_tag_input_placeholders": [
             "기존 태그를 입력하세요...",
             "새 태그를 입력하세요..."
-        ]
+        ],
+        "include_unspecified_year_switch": "미지정 연도 포함"
     }
 }

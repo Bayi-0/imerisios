@@ -409,3 +409,19 @@
 
 ### Removed
 - N/A
+
+
+## [v3.0.1] - 2025-07-14
+
+### Added
+- N/A
+
+### Changed
+- Add/sort ranking entries tabs are opened at the start of the page.
+
+### Fixed
+- Fixed inability to see ranking entries without start_year specified after sorting;
+- Fixed no commas or excessive comas in displaying.
+
+### Removed
+- N/A
