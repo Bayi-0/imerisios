@@ -21,7 +21,8 @@
             "September", "Oktober", "November", "December"
         ],
         "warning": "Advarsel",
-        "apply": "Anvend"
+        "apply": "Anvend",
+        "clear": "Ryd"
     },
     "app": {
         "menu": "Menu",
@@ -244,6 +245,9 @@
             "Indtast det gamle tag...",
             "Indtast det nye tag..."
         ],
-        "include_unspecified_year_switch": "Inkluder ubestemt år"
+        "include_unspecified_year_switch": "Inkluder ubestemt år",
+        "set_default": "Sæt som standard",
+        "set_default_question": "Er du sikker på, at du vil sætte de nuværende sorterings- og filterindstillinger som standard for ranglisten?",
+        "set_default_success": "Standardindstillingerne for sortering og filtrering er blevet opdateret."
     }
 }

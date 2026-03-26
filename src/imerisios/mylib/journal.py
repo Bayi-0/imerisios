@@ -667,7 +667,8 @@ class Journal:
 
             self.entry_today(None)  
             self.widgets_dict["entries input"].value = ""
-
+            
+            self.app.setup_journal = True
             await self.app.dialog(toga.InfoDialog(self.strings_c["success"], self.strings["remove_entry_success"]))
         else:
             await self.app.dialog(toga.InfoDialog(self.strings_c["error"], self.strings["no_entry_found"]))

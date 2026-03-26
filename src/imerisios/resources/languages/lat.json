@@ -21,7 +21,8 @@
             "September", "October", "November", "December"
         ],
         "warning": "Monitio", 
-        "apply": "Applicare" 
+        "apply": "Applicare",
+        "clear": "Purgare"
     },
     "app": {
         "menu": "Index", 
@@ -244,6 +245,9 @@
             "Inscribe veterem notam...",
             "Inscribe novam notam..."
         ],
-        "include_unspecified_year_switch": "Includere annum incertum"
+        "include_unspecified_year_switch": "Includere annum incertum",
+        "set_default": "Constitue pro norma",
+        "set_default_question": "Certene vis praesentia praecepta digerendi et colandi constituere pro norma huius ordinis?",
+        "set_default_success": "Praecepta norma digerendi et colandi feliciter renovata sunt."
     }
 }

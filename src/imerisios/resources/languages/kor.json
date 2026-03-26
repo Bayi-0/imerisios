@@ -21,7 +21,8 @@
             "9월", "10월", "11월", "12월"
         ],
         "warning": "경고",
-        "apply": "적용"
+        "apply": "적용",
+        "clear": "지우기"
     },
     "app": {
         "menu": "메뉴",
@@ -244,6 +245,9 @@
             "기존 태그를 입력하세요...",
             "새 태그를 입력하세요..."
         ],
-        "include_unspecified_year_switch": "미지정 연도 포함"
+        "include_unspecified_year_switch": "미지정 연도 포함",
+        "set_default": "기본으로 설정",
+        "set_default_question": "현재의 정렬 및 필터 설정을 해당 순위의 기본값으로 설정하시겠습니까?",
+        "set_default_success": "기본 정렬 및 필터 설정이 성공적으로 업데이트되었습니다."
     }
 }

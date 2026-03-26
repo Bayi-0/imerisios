@@ -425,3 +425,20 @@
 
 ### Removed
 - N/A
+
+
+## [v3.1.0] - 2026-03-26
+
+### Added
+- Ability to set any sorting values in rankings as default.
+
+### Changed
+- Changed the way some functions work in rankings.py, particularly those that work with sorting/filtering.
+
+### Fixed
+- Fixed the problem where journal wasn't updated after an entry removal;
+- Fixed some minor UI/code stylistic problems;
+- Fixed restoring databases - non-ascii characters are preserved now.
+
+### Removed
+- N/A

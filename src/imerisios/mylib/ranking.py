@@ -2,13 +2,19 @@ import toga
 from toga.style import Pack
 from toga.constants import COLUMN, ROW
 import sqlite3 as sql
-from imerisios.mylib.tools import get_back_next_buttons, reverse_dict, length_check, get_connection, close_connection, get_ranges, change_range, set_range
+import json
+import copy
+import asyncio
+from imerisios.mylib.tools import get_back_next_buttons, reverse_dict, get_connection, close_connection, get_ranges, change_range, set_range
 from datetime import date
+from collections import defaultdict
 from titlecase import titlecase
 from nameparser import HumanName
-
-
+ 
 class Rankings:
+    
+    CATEGORIES = ["book", "movie", "series", "music"]
+
     def __init__(self, app, db_path):
         self.app = app
         self.db_path = db_path
@@ -22,24 +28,28 @@ class Rankings:
         crt = (["—", self.strings["grade"], self.strings["title"]], [self.strings_c["year"], self.strings["added_date"]])
         self.data = {
             "rankings": {}, 
-            "filters": {},
-            "categories": ["book", "movie", "series", "music"],
             "criteria": {
                 "book": crt[0] + [self.strings["author"]] + crt[1],
                 "movie": crt[0] + [self.strings["director"]] + crt[1],
                 "series": crt[0] + [self.strings["creator"]] + crt[1],
                 "music": crt[0][:2] + [self.strings["artist"]] + crt[1][-1:]
             },
-            "grades": ["E", "D", "C", "B", "A", "S"]
+            "grades": ["E", "D", "C", "B", "A", "S"],
         }
-        self.widgets_dict = {"entries": {t:{} for t in self.data["categories"]}}
+        sorting_data = {
+            s_t: 
+                {t: {"default": {}, "current": {}} for t in self.CATEGORIES} 
+            for s_t in ["sorting", "load_sorting", "filtering", "load_filtering"]
+        }
+        self.data.update(sorting_data)
+        self.widgets_dict = {"entries": {t:{} for t in self.CATEGORIES}}
 
         self.maps = {
             "category_to_person": {"book": "author", "movie": "director", "series": "creator", "music": "artist"},
             "num_to_name": {i + 1: self.data["grades"][i] for i in range(len(self.data["grades"]))},
             "localized_to_system": 
                 {self.strings[k]: k for k in ["grade", "title", "added_date", "author", "director", "creator", "artist"]} | 
-                {k: v for k, v in zip(self.strings["categories"], self.data["categories"])}
+                {k: v for k, v in zip(self.strings["categories"], self.CATEGORIES)}
         }
         self.maps["name_to_num"] = reverse_dict(self.maps["num_to_name"])
         self.maps["localized_to_system"][self.strings_c["year"]] = "year"
@@ -72,8 +82,8 @@ class Rankings:
 
     def get_list_box(self):
         boxes = []
-        for i in range(len(self.data["categories"])):
-            t = self.data["categories"][i]
+        for i in range(len(self.CATEGORIES)):
+            t = self.CATEGORIES[i]
             label = toga.Label(
                 self.strings["rankings_labels"][i], 
                 style=Pack(flex=0.09, padding=(14,20), text_align="center", font_weight="bold", font_size=18, color=self.clrs[2])
@@ -119,7 +129,7 @@ class Rankings:
             self.reg(chld + back_next_buttons + [sort_button, box, self.widgets_dict[f"{t} no_entries label"]])
 
         # return container
-        icons = [toga.Icon(f"resources/images/ranking/{t}.png") for t in self.data["categories"]]
+        icons = [toga.Icon(f"resources/images/ranking/{t}.png") for t in self.CATEGORIES]
 
         list_container = toga.OptionContainer(content=[toga.OptionItem(self.strings["categories"][i], boxes[i], icon=icons[i]) for i in range(4)])
 
@@ -168,7 +178,7 @@ class Rankings:
         )
         
         ## author/director/creator (person)
-        for c in self.data["categories"]:
+        for c in self.CATEGORIES:
             self.widgets_dict[f"{c}_person label"] = self.get_label(f"{self.strings[self.maps['category_to_person'][c]]}:")
             self.reg([self.widgets_dict[f"{c}_person label"]])
         
@@ -254,7 +264,7 @@ class Rankings:
         self.widgets_load_lists["edit box"] = edit_chld
 
         self.widgets_load_lists["add_edit top_boxes"] = {}
-        for t in self.data["categories"]:
+        for t in self.CATEGORIES:
             l = []
             if t != "music":
                 l.extend([title_label, self.widgets_dict["add_edit title input"], self.widgets_dict["add_edit title_person switch"], "partial div"])
@@ -289,19 +299,6 @@ class Rankings:
     
 
     def get_sort_box(self):
-        self.data["sorting"] = {t: [("—", "↑") for _ in range(3)] for t in self.data["categories"]}
-
-        self.data["filtering"] = {
-            t: {"grade": ("E", "S"), "person": "", "tags_include": "", "tags_exclude": "", "start_year": ("", "", True), "added_date": (date(year=2024, month=7, day=25), self.today)}
-            for t in self.data["categories"]
-        }
-        del self.data["filtering"]["music"]["person"]
-        del self.data["filtering"]["music"]["start_year"]
-
-        self.data["load sorting"] = {t: [] for t in self.data["categories"]}
-        self.data["load filtering"] = {t: [] for t in self.data["categories"]}
-        
-        # category box
         category_box = self.widgets_dict["category box"]
         
         # sort
@@ -336,11 +333,18 @@ class Rankings:
 
             self.reg([labels[i]])
 
-        ## reset button
+        ## reset and clear buttons
         sort_reset_button = toga.Button(
             self.strings_c["reset"], on_press=self.reset_sort, 
-            style=Pack(padding=4, height=44, font_size=13, color=self.clrs[2], background_color=self.clrs[1])
+            style=Pack(flex=0.5, padding=4, height=44, font_size=13, color=self.clrs[2], background_color=self.clrs[1])
         )
+        sort_clear_button = toga.Button(
+            self.strings_c["clear"], on_press=self.clear_sort, 
+            style=Pack(flex=0.5, padding=4, height=44, font_size=13, color=self.clrs[2], background_color=self.clrs[1])
+        )
+        sort_buttons_chld = [sort_reset_button, sort_clear_button]
+        sort_buttons_box = toga.Box(children=sort_buttons_chld,style=Pack(direction=ROW))
+
         
         ## sort box
         sort_chld = [
@@ -348,7 +352,7 @@ class Rankings:
             sort_boxes[0], self.get_div((0,80)),
             sort_boxes[1], self.get_div((0,80)), 
             sort_boxes[2], self.get_div((0,80)),
-            sort_reset_button, self.get_div()
+            sort_buttons_box
         ]
         sort_box = toga.Box(children=sort_chld, style=Pack(direction=COLUMN))
         
@@ -440,18 +444,32 @@ class Rankings:
 
         added_date_box  = toga.Box(children=added_date_boxes, style=Pack(direction=ROW))
 
-        ## filter reset button
-        reset_button = toga.Button(
+        ## filter reset and clear buttons
+        filter_reset_button = toga.Button(
             self.strings_c["reset"], on_press=self.reset_filter, 
+            style=Pack(flex=0.5, padding=4, height=44, font_size=13, color=self.clrs[2], background_color=self.clrs[1])
+        )
+        filter_clear_button = toga.Button(
+            self.strings_c["clear"], on_press=self.clear_filter, 
+            style=Pack(flex=0.5, padding=4, height=44, font_size=13, color=self.clrs[2], background_color=self.clrs[1])
+        )
+        filter_buttons_chld = [filter_reset_button, filter_clear_button]
+        filter_buttons_box = toga.Box(children=filter_buttons_chld,style=Pack(direction=ROW))
+
+        ## set as default button
+        set_default_button = toga.Button(
+            self.strings["set_default"], id="sort default button",
+            on_press=self.sort_set_default_dialog, 
             style=Pack(padding=4, height=44, font_size=13, color=self.clrs[2], background_color=self.clrs[1])
         )
+        set_default_div = self.get_div()
 
         ## filter box
         self.widgets_dict["filter box"] = toga.Box(style=Pack(direction=COLUMN))
 
         ## filter load lists
         self.widgets_load_lists["filter box"] = {}
-        for t in self.data["categories"]:
+        for t in self.CATEGORIES:
             l = [
                 filter_label, self.widgets_dict["full_divs"][0], 
                 grade_label, grade_box, "partial div",
@@ -461,16 +479,16 @@ class Rankings:
             l.extend([tags_label, self.widgets_dict["sort tags_include input"], self.widgets_dict["sort tags_exclude input"], "partial div"])
             if t != "music":
                 l.extend([start_year_label, start_year_box, self.widgets_dict["sort start_year switch"], "partial div"])
-            l.extend([added_date_label, added_date_box, "partial div", reset_button])
+            l.extend([added_date_label, added_date_box, "partial div", filter_buttons_box, set_default_div, set_default_button])
 
             self.widgets_load_lists["filter box"][t] = l
 
             self.reg(l)
 
-        # sort & filter button
+        # apply button
         button = toga.Button(
-            self.strings_c["apply"], id="sort button", 
-            on_press=self.check_sort_inputs, 
+            self.strings_c["apply"], id="sort apply button", 
+            on_press=self.sort_rankings, 
             style=Pack(height=120, padding=11, font_size=18, color=self.clrs[2], background_color=self.clrs[1])
         )
         
@@ -496,7 +514,7 @@ class Rankings:
         )
         
         self.reg(
-            sort_chld + self.widgets_dict["sort start_year inputs"] + self.widgets_dict["sort added_date dates"] + 
+            sort_chld + sort_buttons_chld + filter_buttons_chld + self.widgets_dict["sort start_year inputs"] + self.widgets_dict["sort added_date dates"] + 
             [sort_label, added_date_label, button, self.widgets_dict["sort box"]]
         )
 
@@ -603,6 +621,13 @@ class Rankings:
                 note TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS ranking_settings (
+                category TEXT,     
+                setting_type TEXT, 
+                setting_data TEXT,   
+                PRIMARY KEY (category, setting_type)
+            );
+
             CREATE INDEX IF NOT EXISTS idx_book_added_date ON book_entries (added_date);
             CREATE INDEX IF NOT EXISTS idx_book_title ON book_entries (title);
             CREATE INDEX IF NOT EXISTS idx_book_author ON book_entries (author);
@@ -636,6 +661,35 @@ class Rankings:
         con, cur = get_connection(self.db_path)
         cur.executescript(self.setup_db_script)
         con.commit()
+
+        no_settings = cur.execute("SELECT 1 FROM ranking_settings LIMIT 1").fetchone() is None
+        if no_settings:
+            settings = {
+                "sorting": {t: [("—", "↑") for _ in range(3)] for t in Rankings.CATEGORIES},
+                "load_sorting": {t: [] for t in Rankings.CATEGORIES},
+                "filtering": {
+                    t: {
+                        "grade": ("E", "S"), "person": "", "tags_include": "", "tags_exclude": "", 
+                        "start_year": ("", "", True), "added_date": (date(year=2024, month=7, day=25), self.today)
+                    }
+                    for t in Rankings.CATEGORIES
+                },
+                "load_filtering": {t: [] for t in Rankings.CATEGORIES}
+            } 
+            del settings["filtering"]["music"]["person"]
+            del settings["filtering"]["music"]["start_year"]
+
+            for category in Rankings.CATEGORIES:
+                data_to_save = {
+                    s_type: settings[s_type][category] for s_type in settings.keys()
+                }
+                self.sort_set_default((category, data_to_save), con_cur=(con, cur))
+        else:
+            self.data.update(self.fetch_default(con_cur=(con, cur)))
+
+        for sort_t in ["sorting", "load_sorting", "filtering", "load_filtering"]:
+            for t in self.CATEGORIES:
+                self.data[sort_t][t]["current"] = copy.deepcopy(self.data[sort_t][t]["default"])
 
         self.update_rankings(load=True, con_cur=(con, cur))
         con.close()
@@ -744,9 +798,9 @@ class Rankings:
     def load_rankings(self, widget, con_cur=None):
         # setup 
         if not widget:
-            self.ranking_get_data({t:([],[]) for t in self.data["categories"]}, con_cur=con_cur)
-
-            for t in self.data["categories"]:
+            self.ranking_get_data({t: (self.data["load_sorting"][t]["default"], self.data["load_filtering"][t]["default"]) for t in self.CATEGORIES}, con_cur=con_cur)
+                                  
+            for t in self.CATEGORIES:
                 data = self.data["rankings"][t]
                 items = get_ranges(data)
                 set_range(self.widgets_dict[f"{t} range"], items)
@@ -775,8 +829,8 @@ class Rankings:
                 self.widgets_dict[f"{t} container"].position = toga.Position(0,0)
 
             elif widget_id[0] == "sort":
-                t = self.data["load type"]
-                self.ranking_get_data({t: (self.data["load sorting"][t], self.data["load filtering"][t])})
+                t = self.maps["localized_to_system"][self.widgets_dict["category selection"].value]
+                self.ranking_get_data({t: (self.data["load_sorting"][t]["current"], self.data["load_filtering"][t]["current"])})
                 items = get_ranges(self.data["rankings"][t])
                 self.widgets_dict[f"{t} range"].items = items
 
@@ -795,30 +849,52 @@ class Rankings:
                         box.add(self.widgets_dict["search no_entries label"])
 
 
+    def clear_sort(self, widget):
+        self.widgets_dict["sort criterion selections"][0].value = "—"
+        self.widgets_dict["sort order selections"][0].value = "↑"
+
+
+    def clear_filter(self, widget):
+        self.widgets_dict["sort grade selections"][0].value, self.widgets_dict["sort grade selections"][1].value = "E", "S"
+        self.widgets_dict["sort tags_include input"].value = ""
+        self.widgets_dict["sort tags_exclude input"].value = ""
+        self.widgets_dict["sort added_date dates"][0].value, self.widgets_dict["sort added_date dates"][1].value = date(2024, 7, 25), self.today
+        self.widgets_dict["person input"].value = ""
+        self.widgets_dict["sort start_year inputs"][0].value, self.widgets_dict["sort start_year inputs"][1].value, self.widgets_dict["sort start_year switch"].value = "", "", True
+
+
+    def load_sort_filter_values(self, category, data_type, sort_section=False, filter_section=False):
+        if sort_section:
+            self.widgets_dict["sort criterion selections"][0].items = self.data["criteria"][category]
+            for i in range(3):
+                self.widgets_dict["sort criterion selections"][i].value = self.data["sorting"][category][data_type][i][0]
+                self.widgets_dict["sort order selections"][i].value = self.data["sorting"][category][data_type][i][1]
+        
+        if filter_section:
+            data = self.data["filtering"][category][data_type]
+            for criterion in data:
+                w_id = f"sort {criterion}" if criterion != "person" else criterion
+                if criterion not in ("grade", "added_date", "start_year"):
+                    self.widgets_dict[w_id + " input"].value = data[criterion]
+                else: 
+                    w_id += " " + {"grade": "selections", "start_year": "inputs", "added_date": "dates"}[criterion]
+                    if criterion != "start_year":
+                        self.widgets_dict[w_id][0].value, self.widgets_dict[w_id][1].value = data[criterion]
+                    else:
+                        self.widgets_dict[w_id][0].value, self.widgets_dict[w_id][1].value, self.widgets_dict["sort start_year switch"].value = data[criterion]
+
+
     def type_change(self, widget):
         t = self.maps["localized_to_system"][widget.value]
         tab = self.tab_on
         if tab == "sort":
-            self.widgets_dict["sort criterion selections"][0].items = self.data["criteria"][t]
-            for i in range(3):
-                self.widgets_dict["sort criterion selections"][i].value = self.data["sorting"][t][i][0]
-                self.widgets_dict["sort order selections"][i].value = self.data["sorting"][t][i][1]
             box = self.widgets_dict["filter box"]
             box.clear()
             for w in self.widgets_load_lists["filter box"][t]:
                 w = self.check_widget(w)
                 box.add(w)
-            data = self.data["filtering"][t]
-            for c in data:
-                w_id = f"sort {c}" if c != "person" else c
-                if c not in ("grade", "added_date", "start_year"):
-                    self.widgets_dict[w_id + " input"].value = data[c]
-                else: 
-                    w_id += " " + {"grade": "selections", "start_year": "inputs", "added_date": "dates"}[c]
-                    if c != "start_year":
-                        self.widgets_dict[w_id][0].value, self.widgets_dict[w_id][1].value = data[c]
-                    else:
-                        self.widgets_dict[w_id][0].value, self.widgets_dict[w_id][1].value, self.widgets_dict["sort start_year switch"].value = data[c]
+
+            self.load_sort_filter_values(t, "current", sort_section=True, filter_section=True)
 
         elif tab == "search":
             self.widgets_dict["search input"].value = ""
@@ -838,6 +914,7 @@ class Rankings:
             self.widgets_dict["person input"].style.padding_bottom = padd
             
         self.type_change_check = False
+
 
     async def remove_entry_dialog(self, widget):
         result = await self.app.dialog(toga.QuestionDialog(self.strings_c["confirmation"], "Are you sure you want to remove the entry?"))
@@ -859,7 +936,7 @@ class Rankings:
         cur.execute(query, (id,))
         con.commit()
 
-        self.ranking_get_data(rankings={t: (self.data["load sorting"][t], self.data["load filtering"][t])}, con_cur=(con, cur))
+        self.ranking_get_data(rankings={t: (self.data["load_sorting"][t]["current"], self.data["load_filtering"][t]["current"])}, con_cur=(con, cur))
 
         con.close()
 
@@ -900,17 +977,13 @@ class Rankings:
                 
 
     def reset_sort(self, widget):
-        self.widgets_dict["sort criterion selections"][0].value = "—"
-        self.widgets_dict["sort order selections"][0].value = "↑"
+        category = self.maps["localized_to_system"][self.widgets_dict["category selection"].value]
+        self.load_sort_filter_values(category, "default", sort_section=True)
 
 
     def reset_filter(self, widget):
-        self.widgets_dict["sort grade selections"][0].value, self.widgets_dict["sort grade selections"][1].value = "E", "S"
-        self.widgets_dict["sort tags_include input"].value = ""
-        self.widgets_dict["sort tags_exclude input"].value = ""
-        self.widgets_dict["sort added_date dates"][0].value, self.widgets_dict["sort added_date dates"][1].value = date(2024, 7, 25), self.today
-        self.widgets_dict["person input"].value = ""
-        self.widgets_dict["sort start_year inputs"][0].value, self.widgets_dict["sort start_year inputs"][1].value = "", ""
+        category = self.maps["localized_to_system"][self.widgets_dict["category selection"].value]
+        self.load_sort_filter_values(category, "default", filter_section=True)
 
 
     def format_title(self, title, max_length=52):
@@ -937,17 +1010,14 @@ class Rankings:
             if len(text) <= max_length:
                 return text
             
-            # Try to break at ", " (item boundary)
             last_comma = text.rfind(", ", 0, max_length - 1)
             if last_comma > 0:
                 return text[:last_comma + 1]
             
-            # Fall back to word boundary
             last_space = text.rfind(" ", 0, max_length)
             if last_space > 0:
                 return text[:last_space]
             
-            # Last resort: hard cut
             return text[:max_length-1]
 
         if not items:
@@ -956,17 +1026,14 @@ class Rankings:
         if len(items) <= first_max_length:
             return items + ("\n" if second_max_length else "")
         
-        # Find the best split point for first row
         first_row = fit_text(items, first_max_length)
         
         if not second_max_length:
             return first_row + ", ..."
         
-        # Extract remaining items for second row
         remaining = items[len(first_row):].lstrip(", ")
         second_row = fit_text(remaining, second_max_length)
         
-        # Add ellipsis if there's more content
         if len(remaining) > len(second_row):
             second_row += " ..." if second_row else "..."
         
@@ -1035,14 +1102,118 @@ class Rankings:
         return entry_box
     
 
-    async def check_sort_inputs(self, widget):
+    def sort_rankings(self, widget): 
+        t, data = self.check_sort_inputs()
+        if not t:
+            return
+
+        for s_type in ["sorting", "load_sorting", "filtering", "load_filtering"]:
+            self.data[s_type][t]["current"] = data[s_type]
+
+        # load
+        self.load_rankings(widget)
+
+        self.app.open_ranking(widget=None, tab=self.strings[t])
+
+
+    async def sort_set_default_dialog(self, widget):
+        result = await self.app.dialog(toga.QuestionDialog(self.strings_c["confirmation"], self.strings["set_default_question"]))
+        if result:
+            self.sort_set_default()
+
+
+    def sort_set_default(self, data_to_save=None, con_cur=None):
+        if not con_cur:
+            con, cur = get_connection(self.db_path)
+        else:
+            con, cur = con_cur
+
+        if not data_to_save:
+            t, data = self.check_sort_inputs()
+            for i in range(3):
+                val = data["sorting"][i][0]
+                if val != "—":
+                    data["sorting"][i][0] = self.maps["localized_to_system"][val]
+                else:
+                    break
+                    
+        else:
+            t, data = data_to_save
+
+        setting_types = ["sorting", "load_sorting", "filtering", "load_filtering"]
+        for s_type in setting_types:
+            json_string = json.dumps(data[s_type], default=str)
+            
+            cur.execute("""
+                INSERT OR REPLACE INTO ranking_settings 
+                (category, setting_type, setting_data) 
+                VALUES (?, ?, ?)
+            """, (t, s_type, json_string))
+
+            self.data[s_type][t]["default"] = data[s_type]
+                
+        con.commit()
+
+        if not con_cur:
+            con.close()
+
+        if not data_to_save:
+            asyncio.create_task(self.app.dialog(toga.InfoDialog(self.strings_c["success"], self.strings["set_default_success"])))
+
+
+    def fetch_default(self, category=None, con_cur=None):
+        if not con_cur:
+            con, cur = get_connection(self.db_path)
+        else:
+            con, cur = con_cur
+
+        if not category:
+            category = self.CATEGORIES
+        placeholders = ", ".join("?" for _ in category)
+        
+        query = f"SELECT category, setting_type, setting_data FROM ranking_settings WHERE category IN ({placeholders})"
+        cur.execute(query, category)
+        
+        if not con_cur:
+            con.close()
+
+        return_data = defaultdict(lambda: defaultdict(dict))
+
+        for row in cur.fetchall():
+            category, s_type, json_string = row
+    
+            parsed_data = json.loads(json_string)
+            
+            if (s_type == "filtering" or s_type == "load_filtering") and "added_date" in parsed_data:
+                start_str, end_str = parsed_data["added_date"]
+                parsed_data["added_date"] = (
+                    date.fromisoformat(start_str),
+                    date.fromisoformat(end_str)
+                )
+            elif s_type == "sorting":
+                for i in range(3):
+                    criterion = parsed_data[i][0]
+                    if criterion != "—":
+                        criterion = self.strings[criterion] if criterion != "year" else self.strings_c["year"]
+                        parsed_data[i][0] = criterion
+                    else:
+                        break
+
+            return_data[s_type][category]["default"] = parsed_data
+        
+        return return_data
+    
+
+    def check_sort_inputs(self):
         category = self.widgets_dict["category selection"].value
         t = self.maps["localized_to_system"][category]
 
         # filter 
-        filtering = []       
+        filtering = {}
+        load_filtering = []       
+
         grades = [self.maps["name_to_num"][self.widgets_dict["sort grade selections"][i].value] for i in range(2)]
-        filtering.append(("grade", grades))
+        load_filtering.append(("grade", grades))
         
         tags = [self.widgets_dict[f"sort tags_{s}clude input"].value.strip() for s in ("in", "ex")]
         tags_include, tags_exclude = tags
@@ -1050,25 +1221,27 @@ class Rankings:
         
         if tags_include and tags_exclude:
             if temp_include & temp_exclude:
-                await self.app.dialog(toga.InfoDialog(self.strings_c["error"], self.strings["tag_overlap_error"]))
-                return 0
+                asyncio.create_task(self.app.dialog(toga.InfoDialog(self.strings_c["error"], self.strings["tag_overlap_error"])))
+                return None, None
+            
             else:
-                filtering.append(("tags_include", temp_include))
-                filtering.append(("tags_exclude", temp_exclude))
+                load_filtering.append(("tags_include", temp_include))
+                load_filtering.append(("tags_exclude", temp_exclude))
         elif tags_include:
-            filtering.append(("tags_include", temp_include))
+            load_filtering.append(("tags_include", temp_include))
         elif tags_exclude:
-            filtering.append(("tags_exclude", temp_exclude))
+            load_filtering.append(("tags_exclude", temp_exclude))
 
         dates = [w.value for w in self.widgets_dict["sort added_date dates"]]
         if dates[0] > dates[1]:
-            await self.app.dialog(toga.InfoDialog(self.strings_c["error"], self.strings["sort_date_error"]))
-            return 0
-        filtering.append(("added_date", dates))
+            asyncio.create_task(self.app.dialog(toga.InfoDialog(self.strings_c["error"], self.strings["sort_date_error"])))
+            return None, None
+        
+        load_filtering.append(("added_date", dates))
 
         if t != "music":
             if (person := self.widgets_dict["person input"].value):
-                filtering.append((self.maps["category_to_person"][t], set(p.strip().lower() for p in person.split(",") if p.strip())))
+                load_filtering.append((self.maps["category_to_person"][t], set(p.strip().lower() for p in person.split(",") if p.strip())))
             
             start_year, end_year = [int(w.value) if w.value else None for w in self.widgets_dict["sort start_year inputs"]]
             years = [-2601, self.today.year, self.widgets_dict["sort start_year switch"].value]
@@ -1076,36 +1249,33 @@ class Rankings:
                 years[0] = start_year
             if end_year:
                 years[1] = end_year
-            filtering.append(("start_year", years))
+            load_filtering.append(("start_year", years))
             
-            self.data["filtering"][t]["person"] = person
-            self.data["filtering"][t]["start_year"] = years
+            filtering["person"] = person
+            filtering["start_year"] = years
 
-        self.data["filtering"][t]["tags_include"] = tags_include
-        self.data["filtering"][t]["tags_exclude"] = tags_exclude
-        self.data["filtering"][t]["grade"] = [self.maps["num_to_name"][grades[i]] for i in range(2)]
-        self.data["filtering"][t]["added_date"] = [self.widgets_dict["sort added_date dates"][i].value for i in range(2)]
-
-        self.data["load filtering"][t] = filtering
+        filtering["tags_include"] = tags_include
+        filtering["tags_exclude"] = tags_exclude
+        filtering["grade"] = [self.maps["num_to_name"][grades[i]] for i in range(2)]
+        filtering["added_date"] = [self.widgets_dict["sort added_date dates"][i].value for i in range(2)]
 
         # sort
-        sort = [(self.widgets_dict["sort criterion selections"][i].value, self.widgets_dict["sort order selections"][i].value) for i in range(3)]
-        self.data["sorting"][t] = sort
-        sorting = []
-        for i in sort:
+        sorting = [[self.widgets_dict["sort criterion selections"][i].value, self.widgets_dict["sort order selections"][i].value] for i in range(3)]
+
+        load_sorting = []
+        for i in sorting:
             if i[0] != "—":
                 c = self.maps["localized_to_system"][i[0]].replace("year", "start_year")
                 o = "ASC" if i[1] == "↑" else "DESC"
-                sorting.append((c, o))
-
-        self.data["load sorting"][t] = sorting
-
-        # type
-        self.data["load type"] = t
-
-        self.load_rankings(widget)
-
-        self.app.open_ranking(widget=None, tab=self.strings[t])
+                load_sorting.append((c, o))
+        
+        return_data = {
+            "filtering": filtering,
+            "load_filtering": load_filtering,
+            "sorting": sorting,
+            "load_sorting": load_sorting
+        }
+        return (t, return_data)
 
     
     def load_edit_box(self, widget):
@@ -1396,7 +1566,7 @@ class Rankings:
         cur.execute(query, query_values)
         con.commit()
 
-        self.ranking_get_data(rankings={t: (self.data["load sorting"][t], self.data["load filtering"][t])}, con_cur=(con, cur))
+        self.ranking_get_data(rankings={t: (self.data["load_sorting"][t]["current"], self.data["load_filtering"][t]["current"])}, con_cur=(con, cur))
 
         if id and id in self.widgets_dict["entries"][t]:
             del self.widgets_dict["entries"][t][id]
@@ -1413,4 +1583,4 @@ class Rankings:
         if widget == "partial div":
             widget = self.get_div((0,80))
             self.reg([widget])
-        return widget
+        return widget    

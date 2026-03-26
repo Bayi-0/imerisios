@@ -35,13 +35,17 @@ class Imerisios(toga.App):
         self.cache_dir = self.paths.cache
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
+        # today date 
+        self.today = date.today()
+
         # settings 
         self.settings_path = self.config_dir / "settings.json"
         if not self.settings_path.exists():
             self.settings = {
                 "language": "English",
-                "theme": "Charcoal"    
+                "theme": "Charcoal"      
             }
+
             self.save_settings(self.settings)
         else:
             with open(self.settings_path) as f:
@@ -61,9 +65,6 @@ class Imerisios(toga.App):
         self.clrs = self.themes[self.settings["theme"]]
 
         self.widgets_dict = {"theme change": [weakref.WeakSet() for _ in range(3)]}
-
-        # today date 
-        self.today = date.today()
 
         self.setup_settings = True
         self.setup_coin = True
@@ -736,7 +737,7 @@ class Imerisios(toga.App):
 
             def backup_database(db_path, backup_path):
                 con = sql.connect(db_path)
-                with open(backup_path, 'w') as f:
+                with open(backup_path, 'w', encoding='utf-8') as f:
                     for line in con.iterdump():
                         f.write(f"{line}\n")
                 con.close()
@@ -762,27 +763,24 @@ class Imerisios(toga.App):
             import sqlite3 as sql
 
             Environment = jclass("android.os.Environment")
-            backup_folder = Path(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath())
+            backup_folder = (self.paths.app / Path(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath()))
 
             def restore_database(backup_path, db_path):
-                with open(backup_path, 'r') as f:
+                with open(backup_path, 'r', encoding='utf-8') as f:
                     sql_script = f.read()
-
-                statements = sql_script.split(';')
-                statements = [stmt.strip() for stmt in statements if stmt.strip()]
 
                 if db_path.exists() and db_path.is_file():
                     db_path.unlink()
 
                 con = sql.connect(db_path)
 
-                for statement in statements:
-                    if statement:
-                        try:
-                            print(f"Executing: {statement[:50]}...") 
-                            con.execute(statement)
-                        except Exception as e:
-                            print(f"Error executing statement: {e}")
+                try:
+                    con.executescript(sql_script)
+                    print("Database restored successfully!")
+                except Exception as e:
+                    print(f"Error restoring database: {e}")
+                
+                con.close()
 
             db_names = ["todo", "habit", "journal", "ranking"]
             db_paths = [self.data_dir / f"{db}.db" for db in db_names]
