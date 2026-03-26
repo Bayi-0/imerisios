@@ -352,7 +352,7 @@ class Rankings:
             sort_boxes[0], self.get_div((0,80)),
             sort_boxes[1], self.get_div((0,80)), 
             sort_boxes[2], self.get_div((0,80)),
-            sort_buttons_box
+            sort_buttons_box, self.get_div()
         ]
         sort_box = toga.Box(children=sort_chld, style=Pack(direction=COLUMN))
         
