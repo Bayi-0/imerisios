@@ -248,6 +248,7 @@
         "include_unspecified_year_switch": "미지정 연도 포함",
         "set_default": "기본으로 설정",
         "set_default_question": "현재의 정렬 및 필터 설정을 해당 순위의 기본값으로 설정하시겠습니까?",
-        "set_default_success": "기본 정렬 및 필터 설정이 성공적으로 업데이트되었습니다."
+        "set_default_success": "기본 정렬 및 필터 설정이 성공적으로 업데이트되었습니다.",
+        "remove_entry_question": "정말로 이 항목을 제거하시겠습니까?"
     }
 }

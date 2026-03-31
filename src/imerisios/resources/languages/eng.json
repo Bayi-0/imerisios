@@ -248,6 +248,7 @@
         "include_unspecified_year_switch": "Include unspecified year",
         "set_default": "Set as default",
         "set_default_question": "Are you sure you want to set the current sort and filter settings as default for the rankings?",
-        "set_default_success": "Default sort and filter settings have been updated successfully."
+        "set_default_success": "Default sort and filter settings have been updated successfully.",
+        "remove_entry_question": "Are you sure you want to remove the entry?"
     }
 }

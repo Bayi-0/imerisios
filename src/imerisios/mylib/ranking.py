@@ -917,7 +917,7 @@ class Rankings:
 
 
     async def remove_entry_dialog(self, widget):
-        result = await self.app.dialog(toga.QuestionDialog(self.strings_c["confirmation"], "Are you sure you want to remove the entry?"))
+        result = await self.app.dialog(toga.QuestionDialog(self.strings_c["confirmation"], self.strings["remove_entry_question"]))
         if result:
             await self.remove_entry()
 
@@ -1227,8 +1227,10 @@ class Rankings:
             else:
                 load_filtering.append(("tags_include", temp_include))
                 load_filtering.append(("tags_exclude", temp_exclude))
+
         elif tags_include:
             load_filtering.append(("tags_include", temp_include))
+            
         elif tags_exclude:
             load_filtering.append(("tags_exclude", temp_exclude))
 

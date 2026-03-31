@@ -243,7 +243,6 @@ class Imerisios(toga.App):
                 self.setup_ui(todo=self.setup_todo)
                 await self.todo.reset_todo_dialog()
 
-
             todo_label = get_label(tabs[1])
             reset_todo_button = get_button(reset_str, reset_todo_dialog)
             

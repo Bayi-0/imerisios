@@ -248,6 +248,7 @@
         "include_unspecified_year_switch": "Includere annum incertum",
         "set_default": "Constitue pro norma",
         "set_default_question": "Certene vis praesentia praecepta digerendi et colandi constituere pro norma huius ordinis?",
-        "set_default_success": "Praecepta norma digerendi et colandi feliciter renovata sunt."
+        "set_default_success": "Praecepta norma digerendi et colandi feliciter renovata sunt.",
+        "remove_entry_question": "Certus es hunc ingressum tollere velle?"
     }
 }

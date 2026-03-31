@@ -248,6 +248,7 @@
         "include_unspecified_year_switch": "Inkluder ubestemt år",
         "set_default": "Sæt som standard",
         "set_default_question": "Er du sikker på, at du vil sætte de nuværende sorterings- og filterindstillinger som standard for ranglisten?",
-        "set_default_success": "Standardindstillingerne for sortering og filtrering er blevet opdateret."
+        "set_default_success": "Standardindstillingerne for sortering og filtrering er blevet opdateret.",
+        "remove_entry_question": "Er du sikker på, at du vil fjerne denne post?"
     }
 }
